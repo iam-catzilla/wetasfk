@@ -12,6 +12,15 @@ function ThemeProvider({
       attribute="class"
       defaultTheme="system"
       enableSystem
+      themes={[
+        "light",
+        "dark",
+        "catppuccin",
+        "nord",
+        "ayu-dark",
+        "tokyo-night",
+        "dracula",
+      ]}
       disableTransitionOnChange
       {...props}
     >
@@ -47,7 +56,7 @@ function ThemeHotkey() {
         return
       }
 
-      if (event.key.toLowerCase() !== "d") {
+      if (event.key.toLowerCase() !== "]") {
         return
       }
 

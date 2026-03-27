@@ -1,19 +1,47 @@
-import { Button } from "@/components/ui/button"
+import { unifiedSearch } from "@/lib/videos"
+import { VideoGrid } from "@/components/video-grid"
+import { CategoryPills } from "@/components/category-pills"
+import { Pagination } from "@/components/pagination"
+import type { SortOrder, VideoSource } from "@/lib/types"
 
-export default function Page() {
+interface Props {
+  searchParams: Promise<{ page?: string; order?: string; source?: string }>
+}
+
+export default async function HomePage({ searchParams }: Props) {
+  const params = await searchParams
+  const page = Math.max(1, parseInt(params.page || "1", 10) || 1)
+  const order = (params.order || "top-weekly") as SortOrder
+  const source = (params.source || "eporner") as VideoSource | "both"
+
+  const data = await unifiedSearch({
+    per_page: 36,
+    page,
+    order,
+    source,
+  })
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
+    <div className="flex flex-col gap-6">
+      <CategoryPills />
+
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl font-bold tracking-tight">
+          {order === "top-weekly" ? "Trending This Week" : "Popular Videos"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {data.totalCount.toLocaleString()} videos
+        </p>
       </div>
+
+      <VideoGrid videos={data.videos} />
+
+      <Pagination
+        currentPage={page}
+        totalPages={Math.min(data.totalPages, 100)}
+        baseUrl="/"
+        searchParams={{ order, ...(source !== "eporner" ? { source } : {}) }}
+      />
     </div>
   )
 }
