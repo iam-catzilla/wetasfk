@@ -279,3 +279,73 @@ export async function getXnxxVideo(id: string): Promise<ScrapedVideo | null> {
   if (data.error) return null
   return data
 }
+
+// ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
+// Server-side has no CORS restrictions — fetch the site directly.
+
+async function fetchXnxxDirect(path: string): Promise<string> {
+  const res = await fetch(`https://www.xnxx.com${path}`, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`xnxx fetch error: ${res.status}`)
+  return res.text()
+}
+
+export async function searchXnxxDirect(
+  query: string,
+  page = 0
+): Promise<ScrapedSearchResponse> {
+  const safeQuery = query.replace(/\s+/g, "+")
+  const html = await fetchXnxxDirect(
+    `/search/${encodeURIComponent(safeQuery)}/${page}`
+  )
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes('class="pagination"') ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function browseXnxxDirect(
+  page = 0,
+  mode: "hits" | "best" | "new" = "hits"
+): Promise<ScrapedSearchResponse> {
+  let xnxxPath: string
+  switch (mode) {
+    case "best":
+      xnxxPath = page === 0 ? "/best" : `/best/${page}`
+      break
+    case "new":
+      xnxxPath = page === 0 ? "/new/" : `/new/${page}`
+      break
+    default:
+      xnxxPath = page === 0 ? "/hits" : `/hits/${page}`
+      break
+  }
+  const html = await fetchXnxxDirect(xnxxPath)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes('class="pagination"') ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function getXnxxVideoDirect(
+  id: string
+): Promise<ScrapedVideo | null> {
+  try {
+    const videoPath = id.replace(/~/g, "/")
+    const html = await fetchXnxxDirect(`/${videoPath}`)
+    return parseVideoPage(html, id)
+  } catch {
+    return null
+  }
+}

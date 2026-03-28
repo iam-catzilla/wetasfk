@@ -220,3 +220,78 @@ export async function get7mmtvVideo(id: string): Promise<ScrapedVideo | null> {
   if (data.error) return null
   return data
 }
+
+// ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
+// Server-side has no CORS restrictions — fetch the site directly.
+
+async function fetch7mmDirect(path: string): Promise<string> {
+  const res = await fetch(`https://7mmtv.sx${path}`, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      Referer: "https://7mmtv.sx/",
+    },
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`7mmtv fetch error: ${res.status}`)
+  return res.text()
+}
+
+export async function search7mmtvDirect(
+  query: string,
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  // 7mmtv does not support keyword search via scraping — browse list instead
+  const html = await fetch7mmDirect(`/en/censored_list/all/${page}.html`)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes("rel='next'") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function browse7mmtvDirect(
+  page = 1,
+  mode: "censored" | "uncensored" | "amateur" | "all" = "censored"
+): Promise<ScrapedSearchResponse> {
+  const mmPath =
+    mode === "uncensored"
+      ? `/en/uncensored_list/all/${page}.html`
+      : mode === "amateur"
+        ? `/en/amateurjav_list/all/${page}.html`
+        : `/en/censored_list/all/${page}.html`
+  const html = await fetch7mmDirect(mmPath)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes("rel='next'") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function get7mmtvVideoDirect(
+  id: string
+): Promise<ScrapedVideo | null> {
+  try {
+    const parts = id.match(/^(?:(\w+)-)?(\d+)$/)
+    if (!parts) return null
+    const type = parts[1] || "censored"
+    const numId = parts[2]
+    const listHtml = await fetch7mmDirect(`/en/${type}_list/all/1.html`)
+    const linkMatch = listHtml.match(
+      new RegExp(
+        `href="https?://7mmtv\\.sx/en/${type}_content/${numId}/([^"]+)\\.html"`
+      )
+    )
+    if (!linkMatch) return null
+    const html = await fetch7mmDirect(
+      `/en/${type}_content/${numId}/${linkMatch[1]}.html`
+    )
+    return parseVideoPage(html, id)
+  } catch {
+    return null
+  }
+}

@@ -200,3 +200,84 @@ export async function getJavmostVideo(
   if (data.error) return null
   return data
 }
+
+// ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
+
+const JAVMOST_BASE_DIRECT = "https://www.javmost.ws"
+
+async function fetchJMDirect(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`javmost fetch error: ${res.status}`)
+  return res.text()
+}
+
+export async function searchJavmostDirect(
+  query: string,
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  const apiUrl = `${JAVMOST_BASE_DIRECT}/showlist/search:${encodeURIComponent(query)}/${page}/update/`
+  const rawJson = await fetchJMDirect(apiUrl)
+  let videos: ScrapedVideo[]
+  try {
+    const data: { status: string; data: string } = JSON.parse(rawJson)
+    if (data.status?.toLowerCase() !== "success" || !data.data) {
+      return { videos: [], page, hasMore: false }
+    }
+    videos = parseListHtml(data.data)
+  } catch {
+    videos = parseListHtml(rawJson)
+  }
+  const hasMore = videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function browseJavmostDirect(
+  page = 1,
+  mode: "new" | "censor" | "uncensor" = "new"
+): Promise<ScrapedSearchResponse> {
+  let apiUrl: string
+  switch (mode) {
+    case "censor":
+      apiUrl = `${JAVMOST_BASE_DIRECT}/showlist/censor/${page}/update/`
+      break
+    case "uncensor":
+      apiUrl = `${JAVMOST_BASE_DIRECT}/showlist/uncensor/${page}/update/`
+      break
+    default:
+      apiUrl = `${JAVMOST_BASE_DIRECT}/showlist/new/${page}/update/`
+      break
+  }
+  const rawJson = await fetchJMDirect(apiUrl)
+  let videos: ScrapedVideo[]
+  try {
+    const data: { status: string; data: string } = JSON.parse(rawJson)
+    if (data.status?.toLowerCase() !== "success" || !data.data) {
+      return { videos: [], page, hasMore: false }
+    }
+    videos = parseListHtml(data.data)
+  } catch {
+    videos = parseListHtml(rawJson)
+  }
+  const hasMore = videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function getJavmostVideoDirect(
+  code: string
+): Promise<ScrapedVideo | null> {
+  try {
+    const url = `${JAVMOST_BASE_DIRECT}/${code}/`
+    const html = await fetchJMDirect(url)
+    return parseVideoPage(html, code)
+  } catch {
+    return null
+  }
+}

@@ -10,21 +10,33 @@ import {
   searchVideos as searchEporner,
   getVideoById as getEpornerVideo,
 } from "./eporner"
-import { searchSxyprn, searchSxyprnQuery, getSxyprnVideo } from "./sxyprn"
-import { browseXnxx, searchXnxx, getXnxxVideo } from "./xnxx"
-import { browseHqporner, searchHqporner, getHqpornerVideo } from "./hqporner"
+import { searchSxyprnQueryDirect, getSxyprnVideoDirect } from "./sxyprn"
+import { browseXnxxDirect, searchXnxxDirect, getXnxxVideoDirect } from "./xnxx"
 import {
-  browseMotherless,
-  searchMotherless,
-  getMotherlessVideo,
+  browseHqpornerDirect,
+  searchHqpornerDirect,
+  getHqpornerVideoDirect,
+} from "./hqporner"
+import {
+  browseMotherlessDirect,
+  searchMotherlessDirect,
+  getMotherlessVideoDirect,
 } from "./motherless"
 import {
-  browsePornhoarder,
-  searchPornhoarder,
-  getPornhoarderVideo,
+  browsePornhoarderDirect,
+  searchPornhoarderDirect,
+  getPornhoarderVideoDirect,
 } from "./pornhoarder"
-import { browse7mmtv, search7mmtv, get7mmtvVideo } from "./sevenmm"
-import { browseJavmost, searchJavmost, getJavmostVideo } from "./javmost"
+import {
+  browse7mmtvDirect,
+  search7mmtvDirect,
+  get7mmtvVideoDirect,
+} from "./sevenmm"
+import {
+  browseJavmostDirect,
+  searchJavmostDirect,
+  getJavmostVideoDirect,
+} from "./javmost"
 
 // ─── Converters ──────────────────────────────────────────
 
@@ -185,12 +197,11 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const page = params.page || 1
       const perPage = params.per_page || 36
       const sxyprnPage = page - 1
-      const data = params.query
-        ? await searchSxyprnQuery(params.query, sxyprnPage)
-        : await searchSxyprn(
-            sxyprnPage,
-            sortToSxyprnMode(params.order || "top-weekly")
-          )
+      const data = await searchSxyprnQueryDirect(
+        params.query || "",
+        sxyprnPage,
+        sortToSxyprnMode(params.order || "top-weekly")
+      )
       return scrapedResponse(
         data.videos.map(sxyprnToUnified),
         data.hasMore,
@@ -199,7 +210,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await getSxyprnVideo(id)
+      const v = await getSxyprnVideoDirect(id)
       return v ? sxyprnToUnified(v) : null
     },
   },
@@ -211,8 +222,8 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const perPage = params.per_page || 36
       const xnxxPage = page - 1
       const data = params.query
-        ? await searchXnxx(params.query, xnxxPage)
-        : await browseXnxx(xnxxPage, "hits")
+        ? await searchXnxxDirect(params.query, xnxxPage)
+        : await browseXnxxDirect(xnxxPage, "hits")
       return scrapedResponse(
         data.videos.map((v) => scrapedToUnified(v, "xnxx")),
         data.hasMore,
@@ -221,7 +232,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await getXnxxVideo(id)
+      const v = await getXnxxVideoDirect(id)
       return v ? scrapedToUnified(v, "xnxx") : null
     },
   },
@@ -232,8 +243,8 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const page = params.page || 1
       const perPage = params.per_page || 36
       const data = params.query
-        ? await searchHqporner(params.query, page)
-        : await browseHqporner(page, "new")
+        ? await searchHqpornerDirect(params.query, page)
+        : await browseHqpornerDirect(page, "new")
       return scrapedResponse(
         data.videos.map((v) => scrapedToUnified(v, "hqporner")),
         data.hasMore,
@@ -242,7 +253,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await getHqpornerVideo(id)
+      const v = await getHqpornerVideoDirect(id)
       return v ? scrapedToUnified(v, "hqporner") : null
     },
   },
@@ -253,8 +264,8 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const page = params.page || 1
       const perPage = params.per_page || 36
       const data = params.query
-        ? await searchMotherless(params.query, page)
-        : await browseMotherless(page, "recent")
+        ? await searchMotherlessDirect(params.query, page)
+        : await browseMotherlessDirect(page, "recent")
       return scrapedResponse(
         data.videos.map((v) => scrapedToUnified(v, "motherless")),
         data.hasMore,
@@ -263,7 +274,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await getMotherlessVideo(id)
+      const v = await getMotherlessVideoDirect(id)
       return v ? scrapedToUnified(v, "motherless") : null
     },
   },
@@ -274,8 +285,8 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const page = params.page || 1
       const perPage = params.per_page || 36
       const data = params.query
-        ? await searchPornhoarder(params.query, page)
-        : await browsePornhoarder(page, "new")
+        ? await searchPornhoarderDirect(params.query, page)
+        : await browsePornhoarderDirect(page)
       return scrapedResponse(
         data.videos.map((v) => scrapedToUnified(v, "pornhoarder")),
         data.hasMore,
@@ -284,7 +295,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await getPornhoarderVideo(id)
+      const v = await getPornhoarderVideoDirect(id)
       return v ? scrapedToUnified(v, "pornhoarder") : null
     },
   },
@@ -295,8 +306,8 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const page = params.page || 1
       const perPage = params.per_page || 36
       const data = params.query
-        ? await search7mmtv(params.query, page)
-        : await browse7mmtv(page, "censored")
+        ? await search7mmtvDirect(params.query, page)
+        : await browse7mmtvDirect(page, "censored")
       return scrapedResponse(
         data.videos.map((v) => scrapedToUnified(v, "7mmtv")),
         data.hasMore,
@@ -305,7 +316,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await get7mmtvVideo(id)
+      const v = await get7mmtvVideoDirect(id)
       return v ? scrapedToUnified(v, "7mmtv") : null
     },
   },
@@ -316,8 +327,8 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const page = params.page || 1
       const perPage = params.per_page || 36
       const data = params.query
-        ? await searchJavmost(params.query, page)
-        : await browseJavmost(page, "new")
+        ? await searchJavmostDirect(params.query, page)
+        : await browseJavmostDirect(page, "new")
       return scrapedResponse(
         data.videos.map((v) => scrapedToUnified(v, "javmost")),
         data.hasMore,
@@ -326,7 +337,7 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       )
     },
     getVideo: async (id) => {
-      const v = await getJavmostVideo(id)
+      const v = await getJavmostVideoDirect(id)
       return v ? scrapedToUnified(v, "javmost") : null
     },
   },

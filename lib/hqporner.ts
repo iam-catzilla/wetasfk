@@ -203,3 +203,82 @@ export async function getHqpornerVideo(
   if (data.error) return null
   return data
 }
+
+// ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
+// Server-side has no CORS restrictions — fetch the site directly.
+
+async function fetchHQDirect(path: string): Promise<string> {
+  const res = await fetch(`https://hqporner.com${path}`, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`hqporner fetch error: ${res.status}`)
+  return res.text()
+}
+
+export async function searchHqpornerDirect(
+  query: string,
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  const hqPath =
+    page <= 1
+      ? `/?q=${encodeURIComponent(query)}`
+      : `/?q=${encodeURIComponent(query)}&p=${page}`
+  const html = await fetchHQDirect(hqPath)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes(">Next<") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function browseHqpornerDirect(
+  page = 1,
+  mode: "new" | "top" | "top-week" | "top-month" = "new"
+): Promise<ScrapedSearchResponse> {
+  let hqPath: string
+  switch (mode) {
+    case "top":
+      hqPath = page <= 1 ? "/top" : `/top/${page}`
+      break
+    case "top-week":
+      hqPath = page <= 1 ? "/top/week" : `/top/week/${page}`
+      break
+    case "top-month":
+      hqPath = page <= 1 ? "/top/month" : `/top/month/${page}`
+      break
+    default:
+      hqPath = page <= 1 ? "/hdporn" : `/hdporn/${page}`
+      break
+  }
+  const html = await fetchHQDirect(hqPath)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes(">Next<") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function getHqpornerVideoDirect(
+  id: string
+): Promise<ScrapedVideo | null> {
+  try {
+    const searchHtml = await fetchHQDirect(`/?q=${id}`)
+    const linkMatch = searchHtml.match(
+      new RegExp(`href="(/hdporn/${id}-[^"]+\\.html)"`)
+    )
+    const html = linkMatch
+      ? await fetchHQDirect(linkMatch[1])
+      : await fetchHQDirect(`/hdporn/${id}.html`)
+    return parseVideoPage(html, id)
+  } catch {
+    return null
+  }
+}

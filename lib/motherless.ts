@@ -216,3 +216,75 @@ export async function getMotherlessVideo(
   if (data.error) return null
   return data
 }
+
+// ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
+// Server-side has no CORS restrictions — fetch the site directly.
+
+async function fetchMLDirect(path: string): Promise<string> {
+  const res = await fetch(`https://motherless.com${path}`, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`motherless fetch error: ${res.status}`)
+  return res.text()
+}
+
+export async function searchMotherlessDirect(
+  query: string,
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  const html = await fetchMLDirect(
+    `/search/videos?term=${encodeURIComponent(query)}&sort=date&page=${page}`
+  )
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes("next_page") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function browseMotherlessDirect(
+  page = 1,
+  mode: "recent" | "popular" | "viewed" | "favorited" = "recent"
+): Promise<ScrapedSearchResponse> {
+  let mlPath: string
+  switch (mode) {
+    case "favorited":
+      mlPath =
+        page <= 1 ? "/videos/favorited" : `/videos/favorited?page=${page}`
+      break
+    case "viewed":
+      mlPath = page <= 1 ? "/videos/viewed" : `/videos/viewed?page=${page}`
+      break
+    case "popular":
+      mlPath = page <= 1 ? "/videos/popular" : `/videos/popular?page=${page}`
+      break
+    default:
+      mlPath = page <= 1 ? "/videos/recent" : `/videos/recent?page=${page}`
+      break
+  }
+  const html = await fetchMLDirect(mlPath)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes("next_page") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function getMotherlessVideoDirect(
+  id: string
+): Promise<ScrapedVideo | null> {
+  try {
+    const html = await fetchMLDirect(`/${id}`)
+    return parseVideoPage(html, id)
+  } catch {
+    return null
+  }
+}

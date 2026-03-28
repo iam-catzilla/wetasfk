@@ -1,16 +1,16 @@
 import type { EpornerSearchResponse, EpornerVideo, SearchParams } from "./types"
 
-function getBaseUrl() {
-  // Server-side: use absolute URL through the local Next.js server (reverse proxy)
-  if (typeof window === "undefined") {
-    if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}/api/eporner/video`
-    }
-    const port = process.env.PORT || "3000"
-    return `http://localhost:${port}/api/eporner/video`
-  }
-  // Client-side: relative URL works fine
-  return "/api/eporner/video"
+const EPORNER_API_DIRECT = "https://www.eporner.com/api/v2"
+
+async function fetchEpornerDirect(
+  path: string,
+  query: string
+): Promise<Response> {
+  const target = `${EPORNER_API_DIRECT}/${path}${query ? `?${query}` : ""}`
+  return fetch(target, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 300 },
+  })
 }
 
 export async function searchVideos(
@@ -26,10 +26,7 @@ export async function searchVideos(
   searchParams.set("lq", String(params.lq ?? 0))
   searchParams.set("format", "json")
 
-  const base = getBaseUrl()
-  const res = await fetch(`${base}/search/?${searchParams.toString()}`, {
-    next: { revalidate: 300 },
-  })
+  const res = await fetchEpornerDirect("video/search/", searchParams.toString())
 
   if (!res.ok) {
     throw new Error(`Eporner API error: ${res.status}`)
@@ -44,10 +41,7 @@ export async function getVideoById(id: string): Promise<EpornerVideo | null> {
   searchParams.set("thumbsize", "big")
   searchParams.set("format", "json")
 
-  const base = getBaseUrl()
-  const res = await fetch(`${base}/id/?${searchParams.toString()}`, {
-    next: { revalidate: 600 },
-  })
+  const res = await fetchEpornerDirect("video/id/", searchParams.toString())
 
   if (!res.ok) {
     return null

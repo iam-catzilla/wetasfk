@@ -204,3 +204,93 @@ export async function getPornhoarderVideo(
   if (data.error) return null
   return data
 }
+
+// ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
+
+const PH_BASE_DIRECT = "https://pornhoarder.tv"
+const PH_ALL_SERVERS = [
+  "33",
+  "47",
+  "21",
+  "40",
+  "45",
+  "12",
+  "35",
+  "25",
+  "41",
+  "44",
+  "42",
+  "43",
+  "48",
+  "29",
+]
+
+async function fetchPHDirect(path: string): Promise<string> {
+  const res = await fetch(`${PH_BASE_DIRECT}${path}`, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`pornhoarder fetch error: ${res.status}`)
+  return res.text()
+}
+
+async function ajaxSearchDirect(query: string, page: number): Promise<string> {
+  const params = new URLSearchParams()
+  params.set("search", query)
+  params.set("sort", "1")
+  params.set("page", String(page))
+  for (const s of PH_ALL_SERVERS) params.append("servers[]", s)
+  const res = await fetch(`${PH_BASE_DIRECT}/ajax_search.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  })
+  if (!res.ok) throw new Error(`AJAX search error: ${res.status}`)
+  return res.text()
+}
+
+export async function searchPornhoarderDirect(
+  query: string,
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  let html: string
+  try {
+    html = await ajaxSearchDirect(query, page)
+  } catch {
+    const phPath = page <= 1 ? "/welcome/" : `/welcome/?page=${page}`
+    html = await fetchPHDirect(phPath)
+  }
+  const videos = parseListPage(html)
+  const hasMore = videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function browsePornhoarderDirect(
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  const phPath = page <= 1 ? "/welcome/" : `/welcome/?page=${page}`
+  const html = await fetchPHDirect(phPath)
+  const videos = parseListPage(html)
+  const hasMore = videos.length >= 20
+  return { videos, page, hasMore }
+}
+
+export async function getPornhoarderVideoDirect(
+  id: string
+): Promise<ScrapedVideo | null> {
+  try {
+    const tildeIdx = id.indexOf("~")
+    if (tildeIdx === -1) return null
+    const slug = id.slice(0, tildeIdx)
+    const encodedId = id.slice(tildeIdx + 1)
+    const html = await fetchPHDirect(`/pornvideo/${slug}/${encodedId}`)
+    return parseVideoPage(html, id)
+  } catch {
+    return null
+  }
+}
