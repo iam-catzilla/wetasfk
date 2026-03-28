@@ -63,6 +63,11 @@ const SOURCE_INFO: Record<
     description: "Free JAV online source for censored & uncensored videos",
     defaultOn: false,
   },
+  pornhub: {
+    label: "PornHub",
+    description: "The world's largest adult video site with millions of videos",
+    defaultOn: false,
+  },
 }
 
 const SECTIONS: {
@@ -377,7 +382,7 @@ const SOURCE_CATEGORIES: {
   {
     label: "Premium Content",
     description: "High-quality curated sources",
-    sources: ["eporner", "hqporner", "sxyporn"],
+    sources: ["eporner", "hqporner", "sxyporn", "pornhub"],
   },
   {
     label: "Large Collections",

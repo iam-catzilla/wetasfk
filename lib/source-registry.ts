@@ -37,6 +37,7 @@ import {
   searchJavmostDirect,
   getJavmostVideoDirect,
 } from "./javmost"
+import { searchPornhubDirect, getPornhubVideoDirect } from "./pornhub"
 
 // ─── Converters ──────────────────────────────────────────
 
@@ -339,6 +340,29 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
     getVideo: async (id) => {
       const v = await getJavmostVideoDirect(id)
       return v ? scrapedToUnified(v, "javmost") : null
+    },
+  },
+
+  pornhub: {
+    idPrefix: "pornhub-",
+    search: async (params) => {
+      const page = params.page || 1
+      const perPage = params.per_page || 36
+      const data = await searchPornhubDirect(
+        params.query || "",
+        page,
+        params.order
+      )
+      return scrapedResponse(
+        data.videos.map((v) => scrapedToUnified(v, "pornhub")),
+        data.hasMore,
+        page,
+        perPage
+      )
+    },
+    getVideo: async (id) => {
+      const v = await getPornhubVideoDirect(id)
+      return v ? scrapedToUnified(v, "pornhub") : null
     },
   },
 }
