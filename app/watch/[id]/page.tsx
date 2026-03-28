@@ -1,17 +1,20 @@
 import { unifiedGetVideo, unifiedSearch, formatViews } from "@/lib/videos"
 import { resolveHandler } from "@/lib/source-registry"
 import { VideoGrid } from "@/components/video-grid"
-import { WatchPageClient } from "./watch-client"
+import { WatchPageClient, WatchPageActions } from "./watch-client"
+import { PlaylistQueue } from "@/components/playlist-queue"
 import { notFound } from "next/navigation"
 import { IconEye, IconStar, IconClock, IconCalendar } from "@tabler/icons-react"
 import Link from "next/link"
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ playlist?: string }>
 }
 
-export default async function WatchPage({ params }: Props) {
+export default async function WatchPage({ params, searchParams }: Props) {
   const { id } = await params
+  const { playlist: playlistId } = await searchParams
 
   const resolved = resolveHandler(id)
   const source = resolved?.source ?? "eporner"
@@ -43,9 +46,14 @@ export default async function WatchPage({ params }: Props) {
 
         {/* Video Info */}
         <div className="flex flex-col gap-4">
-          <h1 className="font-heading text-xl leading-tight font-bold lg:text-2xl">
-            {video.title}
-          </h1>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <h1 className="font-heading text-xl leading-tight font-bold lg:text-2xl">
+              {video.title}
+            </h1>
+            <div className="shrink-0">
+              <WatchPageActions video={video} />
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -83,43 +91,49 @@ export default async function WatchPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Sidebar - Related */}
-      <aside className="w-full shrink-0 lg:w-80 xl:w-96">
-        <h2 className="mb-4 font-heading text-lg font-semibold">
-          Related Videos
-        </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          {relatedData.videos
-            .filter((v) => v.id !== video.id)
-            .slice(0, 8)
-            .map((v) => (
-              <Link
-                key={v.id}
-                href={`/watch/${v.id}`}
-                className="group flex gap-3 rounded-lg p-2 transition-colors hover:bg-accent"
-              >
-                <div className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-md bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={v.thumb || ""}
-                    alt={v.title}
-                    className="size-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute right-1 bottom-1 rounded bg-black/80 px-1 py-0.5 text-[10px] text-white">
-                    {v.durationStr}
+      {/* Sidebar - Queue + Related */}
+      <aside className="flex w-full shrink-0 flex-col gap-6 lg:w-80 xl:w-96">
+        {playlistId && (
+          <PlaylistQueue playlistId={playlistId} currentVideoId={video.id} />
+        )}
+
+        <div>
+          <h2 className="mb-4 font-heading text-lg font-semibold">
+            Related Videos
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {relatedData.videos
+              .filter((v) => v.id !== video.id)
+              .slice(0, 8)
+              .map((v) => (
+                <Link
+                  key={v.id}
+                  href={`/watch/${v.id}`}
+                  className="group flex gap-3 rounded-lg p-2 transition-colors hover:bg-accent"
+                >
+                  <div className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={v.thumb || ""}
+                      alt={v.title}
+                      className="size-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className="absolute right-1 bottom-1 rounded bg-black/80 px-1 py-0.5 text-[10px] text-white">
+                      {v.durationStr}
+                    </div>
                   </div>
-                </div>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <p className="line-clamp-2 text-sm leading-snug font-medium group-hover:text-foreground">
-                    {v.title}
-                  </p>
-                  <span className="text-xs text-muted-foreground">
-                    {formatViews(v.views)} views
-                  </span>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="line-clamp-2 text-sm leading-snug font-medium group-hover:text-foreground">
+                      {v.title}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {formatViews(v.views)} views
+                    </span>
+                  </div>
+                </Link>
+              ))}
+          </div>
         </div>
       </aside>
     </div>

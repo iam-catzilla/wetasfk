@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "plyr/dist/plyr.css";
 
-@custom-variant dark (&:is(.dark *, .catppuccin *, .nord *, .ayu-dark *, .tokyo-night *, .dracula *, .gruvbox-dark-soft *, .gruvbox-dark-hard *));
+@custom-variant dark (&:is(.dark *, .catppuccin *, .nord *, .ayu-dark *, .tokyo-night *, .dracula *, .gruvbox-dark-soft *, .gruvbox-dark-hard *, .horizon *, .synthwave-84 *, .rose-pine *, .kanagawa *));
 
 /* ─── Plyr theme overrides ─────────────────────────────── */
 .plyr-container {
@@ -347,6 +347,142 @@
   --sidebar-accent-foreground: #ebdbb2;
   --sidebar-border: #3c3836;
   --sidebar-ring: #d65d0e;
+}
+
+.horizon {
+  --background: #1c1e26;
+  --foreground: #cbced0;
+  --card: #232530;
+  --card-foreground: #cbced0;
+  --popover: #232530;
+  --popover-foreground: #cbced0;
+  --primary: #e95678;
+  --primary-foreground: #1c1e26;
+  --secondary: #2e303e;
+  --secondary-foreground: #cbced0;
+  --muted: #232530;
+  --muted-foreground: #6c6f93;
+  --accent: #2e303e;
+  --accent-foreground: #cbced0;
+  --destructive: #e95678;
+  --border: #2e303e;
+  --input: #2e303e;
+  --ring: #e95678;
+  --chart-1: #fab795;
+  --chart-2: #fac29a;
+  --chart-3: #e95678;
+  --chart-4: #b877db;
+  --chart-5: #25b0bc;
+  --sidebar: #1c1e26;
+  --sidebar-foreground: #cbced0;
+  --sidebar-primary: #e95678;
+  --sidebar-primary-foreground: #1c1e26;
+  --sidebar-accent: #2e303e;
+  --sidebar-accent-foreground: #cbced0;
+  --sidebar-border: #2e303e;
+  --sidebar-ring: #e95678;
+}
+
+.synthwave-84 {
+  --background: #262335;
+  --foreground: #e0def4;
+  --card: #34294f;
+  --card-foreground: #e0def4;
+  --popover: #34294f;
+  --popover-foreground: #e0def4;
+  --primary: #ff7edb;
+  --primary-foreground: #262335;
+  --secondary: #3b2d63;
+  --secondary-foreground: #e0def4;
+  --muted: #34294f;
+  --muted-foreground: #848bbd;
+  --accent: #3b2d63;
+  --accent-foreground: #e0def4;
+  --destructive: #fe4450;
+  --border: #443766;
+  --input: #443766;
+  --ring: #ff7edb;
+  --chart-1: #72f1b8;
+  --chart-2: #fede5d;
+  --chart-3: #36f9f6;
+  --chart-4: #ff7edb;
+  --chart-5: #f97e72;
+  --sidebar: #1e1a2e;
+  --sidebar-foreground: #e0def4;
+  --sidebar-primary: #ff7edb;
+  --sidebar-primary-foreground: #262335;
+  --sidebar-accent: #3b2d63;
+  --sidebar-accent-foreground: #e0def4;
+  --sidebar-border: #443766;
+  --sidebar-ring: #ff7edb;
+}
+
+.rose-pine {
+  --background: #191724;
+  --foreground: #e0def4;
+  --card: #1f1d2e;
+  --card-foreground: #e0def4;
+  --popover: #1f1d2e;
+  --popover-foreground: #e0def4;
+  --primary: #eb6f92;
+  --primary-foreground: #191724;
+  --secondary: #26233a;
+  --secondary-foreground: #e0def4;
+  --muted: #1f1d2e;
+  --muted-foreground: #6e6a86;
+  --accent: #26233a;
+  --accent-foreground: #e0def4;
+  --destructive: #eb6f92;
+  --border: #26233a;
+  --input: #26233a;
+  --ring: #eb6f92;
+  --chart-1: #9ccfd8;
+  --chart-2: #f6c177;
+  --chart-3: #c4a7e7;
+  --chart-4: #eb6f92;
+  --chart-5: #31748f;
+  --sidebar: #191724;
+  --sidebar-foreground: #e0def4;
+  --sidebar-primary: #eb6f92;
+  --sidebar-primary-foreground: #191724;
+  --sidebar-accent: #26233a;
+  --sidebar-accent-foreground: #e0def4;
+  --sidebar-border: #26233a;
+  --sidebar-ring: #eb6f92;
+}
+
+.kanagawa {
+  --background: #1f1f28;
+  --foreground: #dcd7ba;
+  --card: #2a2a37;
+  --card-foreground: #dcd7ba;
+  --popover: #2a2a37;
+  --popover-foreground: #dcd7ba;
+  --primary: #7e9cd8;
+  --primary-foreground: #1f1f28;
+  --secondary: #2a2a37;
+  --secondary-foreground: #dcd7ba;
+  --muted: #2a2a37;
+  --muted-foreground: #727169;
+  --accent: #2a2a37;
+  --accent-foreground: #dcd7ba;
+  --destructive: #e82424;
+  --border: #363646;
+  --input: #363646;
+  --ring: #7e9cd8;
+  --chart-1: #98bb6c;
+  --chart-2: #e6c384;
+  --chart-3: #7fb4ca;
+  --chart-4: #957fb8;
+  --chart-5: #d27e99;
+  --sidebar: #1f1f28;
+  --sidebar-foreground: #dcd7ba;
+  --sidebar-primary: #7e9cd8;
+  --sidebar-primary-foreground: #1f1f28;
+  --sidebar-accent: #2a2a37;
+  --sidebar-accent-foreground: #dcd7ba;
+  --sidebar-border: #363646;
+  --sidebar-ring: #7e9cd8;
 }
 
 @theme inline {

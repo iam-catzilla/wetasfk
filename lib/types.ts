@@ -66,6 +66,23 @@ export interface WatchHistoryItem {
   watchedAt: number
 }
 
+// ─── Playlist models ─────────────────────────────────────
+export interface PlaylistItem {
+  id: string
+  title: string
+  thumb: string
+  duration: string
+  addedAt: number
+}
+
+export interface Playlist {
+  id: string
+  name: string
+  items: PlaylistItem[]
+  createdAt: number
+  updatedAt: number
+}
+
 // ─── Unified video model ─────────────────────────────────
 export type VideoSource =
   | "eporner"

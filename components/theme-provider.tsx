@@ -22,6 +22,10 @@ function ThemeProvider({
         "dracula",
         "gruvbox-dark-soft",
         "gruvbox-dark-hard",
+        "horizon",
+        "synthwave-84",
+        "rose-pine",
+        "kanagawa",
       ]}
       disableTransitionOnChange
       {...props}

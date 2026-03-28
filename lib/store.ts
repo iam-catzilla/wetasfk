@@ -2,7 +2,13 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { FavoriteItem, WatchHistoryItem, VideoSource } from "./types"
+import type {
+  FavoriteItem,
+  WatchHistoryItem,
+  VideoSource,
+  Playlist,
+  PlaylistItem,
+} from "./types"
 import { ALL_SOURCES, DEFAULT_ENABLED } from "./source-config"
 
 export { ALL_SOURCES, DEFAULT_ENABLED }
@@ -25,6 +31,17 @@ interface AppStore {
   enabledSources: Record<VideoSource, boolean>
   toggleSource: (source: VideoSource) => void
   getEnabledList: () => VideoSource[]
+
+  // Playlist
+  playlists: Playlist[]
+  createPlaylist: (name: string) => string
+  deletePlaylist: (id: string) => void
+  renamePlaylist: (id: string, name: string) => void
+  addToPlaylist: (playlistId: string, item: PlaylistItem) => void
+  removeFromPlaylist: (playlistId: string, videoId: string) => void
+  getPlaylistById: (id: string) => Playlist | undefined
+  isInPlaylist: (playlistId: string, videoId: string) => boolean
+  importPlaylist: (playlist: Playlist) => void
 }
 
 export const useAppStore = create<AppStore>()(
@@ -78,6 +95,77 @@ export const useAppStore = create<AppStore>()(
         const s = get().enabledSources
         return ALL_SOURCES.filter((k) => s[k])
       },
+
+      // Playlist
+      playlists: [],
+
+      createPlaylist: (name) => {
+        const id = `pl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        const now = Date.now()
+        set((state) => ({
+          playlists: [
+            ...state.playlists,
+            { id, name, items: [], createdAt: now, updatedAt: now },
+          ],
+        }))
+        return id
+      },
+
+      deletePlaylist: (id) =>
+        set((state) => ({
+          playlists: state.playlists.filter((p) => p.id !== id),
+        })),
+
+      renamePlaylist: (id, name) =>
+        set((state) => ({
+          playlists: state.playlists.map((p) =>
+            p.id === id ? { ...p, name, updatedAt: Date.now() } : p
+          ),
+        })),
+
+      addToPlaylist: (playlistId, item) =>
+        set((state) => ({
+          playlists: state.playlists.map((p) => {
+            if (p.id !== playlistId) return p
+            if (p.items.some((i) => i.id === item.id)) return p
+            return {
+              ...p,
+              items: [...p.items, item],
+              updatedAt: Date.now(),
+            }
+          }),
+        })),
+
+      removeFromPlaylist: (playlistId, videoId) =>
+        set((state) => ({
+          playlists: state.playlists.map((p) => {
+            if (p.id !== playlistId) return p
+            return {
+              ...p,
+              items: p.items.filter((i) => i.id !== videoId),
+              updatedAt: Date.now(),
+            }
+          }),
+        })),
+
+      getPlaylistById: (id) => get().playlists.find((p) => p.id === id),
+
+      isInPlaylist: (playlistId, videoId) => {
+        const pl = get().playlists.find((p) => p.id === playlistId)
+        return pl ? pl.items.some((i) => i.id === videoId) : false
+      },
+
+      importPlaylist: (playlist) =>
+        set((state) => {
+          // Generate a new id so imports never clash
+          const id = `pl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+          return {
+            playlists: [
+              ...state.playlists,
+              { ...playlist, id, createdAt: Date.now(), updatedAt: Date.now() },
+            ],
+          }
+        }),
     }),
     {
       name: "wetasfk-store",
@@ -89,6 +177,10 @@ export const useAppStore = create<AppStore>()(
           if (es[src] === undefined) es[src] = DEFAULT_ENABLED[src]
         }
         ;(merged as AppStore).enabledSources = es
+        // Ensure playlists array exists for older persisted data
+        if (!Array.isArray((merged as AppStore).playlists)) {
+          ;(merged as AppStore).playlists = []
+        }
         return merged as AppStore
       },
     }

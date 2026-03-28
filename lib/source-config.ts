@@ -12,12 +12,12 @@ export const ALL_SOURCES: VideoSource[] = [
 ]
 
 export const DEFAULT_ENABLED: Record<VideoSource, boolean> = {
-  eporner: true,
+  eporner: false,
   sxyporn: true,
   hqporner: false,
-  xnxx: true,
+  xnxx: false,
   motherless: false,
   pornhoarder: false,
-  "7mmtv": false,
+  "7mmtv": true,
   javmost: false,
 }

@@ -5,11 +5,19 @@ import { useTheme } from "next-themes"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
 import { useAppStore } from "@/lib/store"
-import { IconAdjustments, IconPalette, IconCheck } from "@tabler/icons-react"
+import {
+  IconAdjustments,
+  IconPalette,
+  IconCheck,
+  IconPlaylist,
+  IconDownload,
+  IconUpload,
+  IconTrash,
+} from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import type { VideoSource } from "@/lib/types"
+import type { VideoSource, Playlist } from "@/lib/types"
 
-type Section = "preferences" | "appearance"
+type Section = "preferences" | "appearance" | "playlists"
 
 const SOURCE_INFO: Record<
   VideoSource,
@@ -17,27 +25,27 @@ const SOURCE_INFO: Record<
 > = {
   eporner: {
     label: "Eporner",
-    description: "Free HD videos via Eporner API",
-    defaultOn: true,
+    description: "Free HD videos via Eporner",
+    defaultOn: false,
   },
   sxyporn: {
     label: "SxyPrn",
-    description: "Alternative source with direct video playback",
+    description: "One of the largest curated premium collections",
     defaultOn: true,
   },
   hqporner: {
     label: "HQPorner",
-    description: "Curated HD content aggregator",
-    defaultOn: true,
+    description: "Premium source with high-quality videos, might be slow",
+    defaultOn: false,
   },
   xnxx: {
     label: "XNXX",
-    description: "One of the largest video archives",
+    description: "Low quality but the largest video archive",
     defaultOn: false,
   },
   motherless: {
     label: "Motherless",
-    description: "User-uploaded amateur content",
+    description: "User-uploaded unfiltered content, some videos may be removed",
     defaultOn: false,
   },
   pornhoarder: {
@@ -47,12 +55,12 @@ const SOURCE_INFO: Record<
   },
   "7mmtv": {
     label: "7mmtv",
-    description: "JAV streaming — censored, uncensored, amateur",
-    defaultOn: false,
+    description: "JAV streaming for censored, uncensored, amateur content",
+    defaultOn: true,
   },
   javmost: {
     label: "JavMost",
-    description: "Free JAV online — censored & uncensored",
+    description: "Free JAV online source for censored & uncensored videos",
     defaultOn: false,
   },
 }
@@ -74,6 +82,12 @@ const SECTIONS: {
     label: "Appearance",
     icon: IconPalette,
     description: "Choose themes and customize the look",
+  },
+  {
+    id: "playlists",
+    label: "Playlists",
+    icon: IconPlaylist,
+    description: "Manage, export and import playlists",
   },
 ]
 
@@ -197,6 +211,54 @@ const THEMES: ThemeDef[] = [
       primary: "#d65d0e",
       accent: "#3c3836",
       muted: "#a89984",
+    },
+  },
+  {
+    id: "horizon",
+    name: "Horizon",
+    colors: {
+      bg: "#1c1e26",
+      surface: "#232530",
+      text: "#cbced0",
+      primary: "#e95678",
+      accent: "#2e303e",
+      muted: "#6c6f93",
+    },
+  },
+  {
+    id: "synthwave-84",
+    name: "Synthwave '84",
+    colors: {
+      bg: "#262335",
+      surface: "#34294f",
+      text: "#e0def4",
+      primary: "#ff7edb",
+      accent: "#3b2d63",
+      muted: "#848bbd",
+    },
+  },
+  {
+    id: "rose-pine",
+    name: "Rosé Pine",
+    colors: {
+      bg: "#191724",
+      surface: "#1f1d2e",
+      text: "#e0def4",
+      primary: "#eb6f92",
+      accent: "#26233a",
+      muted: "#6e6a86",
+    },
+  },
+  {
+    id: "kanagawa",
+    name: "Kanagawa",
+    colors: {
+      bg: "#1f1f28",
+      surface: "#2a2a37",
+      text: "#dcd7ba",
+      primary: "#7e9cd8",
+      accent: "#2a2a37",
+      muted: "#727169",
     },
   },
 ]
@@ -536,6 +598,99 @@ function AppearanceSection() {
   )
 }
 
+function PlaylistsSection() {
+  const { playlists, deletePlaylist, importPlaylist } = useAppStore()
+
+  function exportPlaylist(pl: Playlist) {
+    const data = JSON.stringify(pl, null, 2)
+    const blob = new Blob([data], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `playlist-${pl.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function handleImport() {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".json"
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      try {
+        const text = await file.text()
+        const data = JSON.parse(text)
+        if (data && data.name && Array.isArray(data.items)) {
+          importPlaylist(data as Playlist)
+        }
+      } catch {
+        // Invalid JSON — silently ignore
+      }
+    }
+    input.click()
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Playlists</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Manage, export and import your playlists
+          </p>
+        </div>
+        <button
+          onClick={handleImport}
+          className="mr-4 flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <IconDownload className="size-4" />
+          Import
+        </button>
+      </div>
+
+      {playlists.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {playlists.map((pl) => (
+            <div
+              key={pl.id}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-4 py-3"
+            >
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-medium">{pl.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {pl.items.length} video{pl.items.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => exportPlaylist(pl)}
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Export playlist"
+                >
+                  <IconDownload className="size-4" />
+                </button>
+                <button
+                  onClick={() => deletePlaylist(pl.id)}
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  title="Delete playlist"
+                >
+                  <IconTrash className="size-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No playlists yet. Create one from any watch page.
+        </p>
+      )}
+    </div>
+  )
+}
+
 interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -546,9 +701,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-4xl">
+      <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
         <DialogTitle className="sr-only">Settings</DialogTitle>
-        <div className="flex flex-col sm:min-h-150 sm:flex-row">
+        <div className="flex flex-col sm:min-h-175 sm:flex-row">
           {/* Desktop sidebar */}
           <div className="hidden w-60 shrink-0 flex-col border-r border-border/60 bg-muted/30 p-3 sm:flex">
             <span className="mb-2 px-2 py-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
@@ -601,6 +756,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="flex-1 overflow-y-auto p-6">
             {section === "preferences" && <PreferencesSection />}
             {section === "appearance" && <AppearanceSection />}
+            {section === "playlists" && <PlaylistsSection />}
           </div>
         </div>
       </DialogContent>

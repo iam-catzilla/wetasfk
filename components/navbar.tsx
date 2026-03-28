@@ -11,9 +11,9 @@ import {
   IconX,
   IconHistory,
   IconSettings,
+  IconDeviceTv,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import { ThemeSwitcher } from "./theme-switcher"
 import { SettingsDialog } from "./settings-dialog"
 import { useAppStore } from "@/lib/store"
 import Image from "next/image"
@@ -22,6 +22,7 @@ const NAV_LINKS = [
   { href: "/", label: "Trending", icon: IconFlame },
   { href: "/search", label: "Search", icon: IconSearch },
   { href: "/favorites", label: "Favorites", icon: IconHeart },
+  { href: "/library", label: "Library", icon: IconDeviceTv },
   { href: "/history", label: "History", icon: IconHistory },
 ]
 

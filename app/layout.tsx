@@ -1,6 +1,7 @@
 import { Geist_Mono, Inter, Manrope } from "next/font/google"
 import { Suspense } from "react"
-
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
@@ -50,6 +51,8 @@ export default function RootLayout({
           <main className="mx-auto max-w-450 px-4 py-6 lg:px-6">
             {children}
           </main>
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
