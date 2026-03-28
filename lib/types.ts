@@ -93,7 +93,6 @@ export type VideoSource =
   | "pornhoarder"
   | "7mmtv"
   | "javmost"
-  | "pornhub"
 
 export interface UnifiedVideo {
   id: string

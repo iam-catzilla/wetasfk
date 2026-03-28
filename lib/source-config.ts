@@ -9,7 +9,6 @@ export const ALL_SOURCES: VideoSource[] = [
   "pornhoarder",
   "7mmtv",
   "javmost",
-  "pornhub",
 ]
 
 export const DEFAULT_ENABLED: Record<VideoSource, boolean> = {
@@ -21,5 +20,4 @@ export const DEFAULT_ENABLED: Record<VideoSource, boolean> = {
   pornhoarder: false,
   "7mmtv": true,
   javmost: false,
-  pornhub: false,
 }
