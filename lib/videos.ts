@@ -14,15 +14,32 @@ export { formatViews, formatDuration, getKeywords }
 export async function unifiedSearch(
   params: SearchParams & { sources?: VideoSource[] }
 ): Promise<UnifiedSearchResponse> {
-  const sources = params.sources?.length
+  const allSources = params.sources?.length
     ? params.sources
     : ["eporner" as VideoSource]
+
+  // Filter out any source names that don't have a registered handler
+  const sources = allSources.filter((s) => s in SOURCE_HANDLERS)
+  if (!sources.length) {
+    return {
+      videos: [],
+      totalCount: 0,
+      totalPages: 0,
+      page: params.page || 1,
+      perPage: params.per_page || 36,
+    }
+  }
+
   const page = params.page || 1
   const perPage = params.per_page || 36
 
-  // Single source — direct passthrough
+  // Single source — direct passthrough with error boundary
   if (sources.length === 1) {
-    return SOURCE_HANDLERS[sources[0]].search(params)
+    try {
+      return await SOURCE_HANDLERS[sources[0]].search(params)
+    } catch {
+      return { videos: [], totalCount: 0, totalPages: 0, page, perPage }
+    }
   }
 
   // Multiple sources — fetch in parallel, interleave results evenly

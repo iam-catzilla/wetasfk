@@ -26,7 +26,9 @@ export default async function SearchPage({ searchParams }: Props) {
     : ALL_SOURCES.filter((s) => DEFAULT_ENABLED[s])
 
   const data = query
-    ? await unifiedSearch({ query, per_page: 36, page, order, sources })
+    ? await unifiedSearch({ query, per_page: 36, page, order, sources }).catch(
+        () => null
+      )
     : null
 
   const sp: Record<string, string> = {}

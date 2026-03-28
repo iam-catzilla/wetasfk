@@ -8,6 +8,7 @@ import { useAppStore } from "@/lib/store"
  * Watches the Zustand enabledSources and syncs to URL ?sources= param.
  * On first mount, pushes stored sources to URL if not already present.
  * When the user toggles sources in settings, this triggers a server re-fetch.
+ * Debounced to avoid multiple rapid navigations during settings interaction.
  */
 export function SourceSync() {
   const router = useRouter()
@@ -16,6 +17,7 @@ export function SourceSync() {
   const enabledSources = useAppStore((s) => s.enabledSources)
   const getEnabledList = useAppStore((s) => s.getEnabledList)
   const initialized = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const enabled = getEnabledList()
@@ -34,11 +36,22 @@ export function SourceSync() {
       return
     }
 
-    // Subsequent changes: update URL from store
-    params.set("sources", enabled.join(","))
-    const qs = params.toString()
-    const url = qs ? `${pathname}?${qs}` : pathname
-    router.replace(url)
+    // Debounce subsequent changes: coalesce rapid toggles into one navigation
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      const latestEnabled = getEnabledList()
+      const latestParams = new URLSearchParams(searchParams.toString())
+      latestParams.set("sources", latestEnabled.join(","))
+      // Reset to page 1 when sources change
+      latestParams.delete("page")
+      const qs = latestParams.toString()
+      const url = qs ? `${pathname}?${qs}` : pathname
+      router.replace(url)
+    }, 400)
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [enabledSources]) // intentionally only depend on enabledSources
 
   return null
