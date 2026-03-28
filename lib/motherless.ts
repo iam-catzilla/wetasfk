@@ -170,6 +170,9 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
 
 function getProxyBaseUrl() {
   if (typeof window === "undefined") {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}/api/motherless`
+    }
     const port = process.env.PORT || "3000"
     return `http://localhost:${port}/api/motherless`
   }

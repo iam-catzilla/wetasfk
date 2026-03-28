@@ -4,6 +4,9 @@ const SXYPRN_BASE = "https://sxyprn.com"
 
 function getProxyBaseUrl() {
   if (typeof window === "undefined") {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}/api/sxyprn`
+    }
     const port = process.env.PORT || "3000"
     return `http://localhost:${port}/api/sxyprn`
   }

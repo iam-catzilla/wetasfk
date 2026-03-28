@@ -3,6 +3,9 @@ import type { EpornerSearchResponse, EpornerVideo, SearchParams } from "./types"
 function getBaseUrl() {
   // Server-side: use absolute URL through the local Next.js server (reverse proxy)
   if (typeof window === "undefined") {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}/api/eporner/video`
+    }
     const port = process.env.PORT || "3000"
     return `http://localhost:${port}/api/eporner/video`
   }

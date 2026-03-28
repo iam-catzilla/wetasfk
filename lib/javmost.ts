@@ -154,6 +154,9 @@ export function parseVideoPage(
 
 function getProxyBaseUrl() {
   if (typeof window === "undefined") {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}/api/javmost`
+    }
     const port = process.env.PORT || "3000"
     return `http://localhost:${port}/api/javmost`
   }
