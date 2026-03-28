@@ -15,10 +15,15 @@ export function VideoPlayer({
   source = "eporner",
   title,
 }: VideoPlayerProps) {
-  // Both sources now use iframe embeds:
-  // - Eporner: their own embed player
-  // - SxyPrn: external host embed (lulustream, vidara, etc.)
   const iframeSrc = source === "eporner" ? `${embedUrl}?autoplay=0` : embedUrl
+
+  if (!iframeSrc) {
+    return (
+      <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-black">
+        <p className="text-sm text-white/60">Video source unavailable</p>
+      </div>
+    )
+  }
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">

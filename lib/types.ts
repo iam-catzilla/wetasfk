@@ -67,7 +67,15 @@ export interface WatchHistoryItem {
 }
 
 // ─── Unified video model ─────────────────────────────────
-export type VideoSource = "eporner" | "sxyporn"
+export type VideoSource =
+  | "eporner"
+  | "sxyporn"
+  | "xnxx"
+  | "hqporner"
+  | "motherless"
+  | "pornhoarder"
+  | "7mmtv"
+  | "javmost"
 
 export interface UnifiedVideo {
   id: string
@@ -116,6 +124,29 @@ export interface SxyprnVideo {
 
 export interface SxyprnSearchResponse {
   videos: SxyprnVideo[]
+  page: number
+  hasMore: boolean
+}
+
+// ─── Generic scraped video (XNXX, HQPorner, Motherless, PornHoarder) ──
+
+export interface ScrapedVideo {
+  id: string
+  title: string
+  thumb: string
+  duration: string
+  durationSec: number
+  views: number
+  rating: string
+  quality: string
+  tags: string[]
+  url: string
+  embedUrl: string
+  added: string
+}
+
+export interface ScrapedSearchResponse {
+  videos: ScrapedVideo[]
   page: number
   hasMore: boolean
 }

@@ -27,8 +27,8 @@ export function VideoCard({ video, priority = false }: VideoCardProps) {
   const [isHovered, setIsHovered] = useState(false)
 
   const thumbSrc = imgError
-    ? "/placeholder.svg"
-    : video.thumb || video.thumbs?.[0] || "/placeholder.svg"
+    ? "/placeholder.png"
+    : video.thumb || video.thumbs?.[0] || "/placeholder.png"
 
   const hoverThumb = video.thumbs?.[7] || video.thumbs?.[4]
 

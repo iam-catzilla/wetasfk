@@ -18,23 +18,28 @@ export function SearchFilters({
 }: SearchFiltersProps) {
   const router = useRouter()
   const [query, setQuery] = useState(currentQuery)
-  const { addSearchTerm, searchHistory } = useAppStore()
+  const { addSearchTerm, searchHistory, getEnabledList } = useAppStore()
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = query.trim()
     if (trimmed) {
       addSearchTerm(trimmed)
-      router.push(
-        `/search?q=${encodeURIComponent(trimmed)}&order=${currentOrder}`
-      )
+      const enabled = getEnabledList()
+      const params = new URLSearchParams()
+      params.set("q", trimmed)
+      params.set("order", currentOrder)
+      params.set("sources", enabled.join(","))
+      router.push(`/search?${params.toString()}`)
     }
   }
 
   function handleOrderChange(order: string) {
+    const enabled = getEnabledList()
     const params = new URLSearchParams()
     if (query) params.set("q", query)
     params.set("order", order)
+    params.set("sources", enabled.join(","))
     router.push(`/search?${params.toString()}`)
   }
 
@@ -83,9 +88,12 @@ export function SearchFilters({
               key={term}
               onClick={() => {
                 setQuery(term)
-                router.push(
-                  `/search?q=${encodeURIComponent(term)}&order=${currentOrder}`
-                )
+                const enabled = getEnabledList()
+                const params = new URLSearchParams()
+                params.set("q", term)
+                params.set("order", currentOrder)
+                params.set("sources", enabled.join(","))
+                router.push(`/search?${params.toString()}`)
               }}
               className="rounded-full border border-border/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
             >

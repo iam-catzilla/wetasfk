@@ -6,12 +6,14 @@ import { cn } from "@/lib/utils"
 import { CATEGORIES } from "@/lib/constants"
 import { useRef, useState, useEffect } from "react"
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
+import { useAppStore } from "@/lib/store"
 
 export function CategoryPills() {
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const getEnabledList = useAppStore((s) => s.getEnabledList)
 
   function checkScroll() {
     const el = scrollRef.current
@@ -53,12 +55,13 @@ export function CategoryPills() {
         className="no-scrollbar flex gap-2 overflow-x-auto py-1"
       >
         {CATEGORIES.map((cat) => {
+          const sources = getEnabledList().join(",")
           const href =
             cat === "Popular"
-              ? "/"
+              ? `/?sources=${sources}`
               : cat === "Trending"
-                ? "/?order=top-weekly"
-                : `/search?q=${encodeURIComponent(cat)}`
+                ? `/?order=top-weekly&sources=${sources}`
+                : `/search?q=${encodeURIComponent(cat)}&sources=${sources}`
           const isActive =
             (cat === "Popular" &&
               pathname === "/" &&

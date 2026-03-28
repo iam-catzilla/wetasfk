@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "plyr/dist/plyr.css";
 
-@custom-variant dark (&:is(.dark *, .catppuccin *, .nord *, .ayu-dark *, .tokyo-night *, .dracula *));
+@custom-variant dark (&:is(.dark *, .catppuccin *, .nord *, .ayu-dark *, .tokyo-night *, .dracula *, .gruvbox-dark-soft *, .gruvbox-dark-hard *));
 
 /* ─── Plyr theme overrides ─────────────────────────────── */
 .plyr-container {
@@ -279,6 +279,74 @@
   --sidebar-accent-foreground: #f8f8f2;
   --sidebar-border: #6272a4;
   --sidebar-ring: #bd93f9;
+}
+
+.gruvbox-dark-soft {
+  --background: #32302f;
+  --foreground: #ebdbb2;
+  --card: #3c3836;
+  --card-foreground: #ebdbb2;
+  --popover: #3c3836;
+  --popover-foreground: #ebdbb2;
+  --primary: #d65d0e;
+  --primary-foreground: #fbf1c7;
+  --secondary: #504945;
+  --secondary-foreground: #ebdbb2;
+  --muted: #3c3836;
+  --muted-foreground: #a89984;
+  --accent: #504945;
+  --accent-foreground: #ebdbb2;
+  --destructive: #cc241d;
+  --border: #504945;
+  --input: #504945;
+  --ring: #d65d0e;
+  --chart-1: #b8bb26;
+  --chart-2: #fabd2f;
+  --chart-3: #83a598;
+  --chart-4: #d3869b;
+  --chart-5: #8ec07c;
+  --sidebar: #282828;
+  --sidebar-foreground: #ebdbb2;
+  --sidebar-primary: #d65d0e;
+  --sidebar-primary-foreground: #fbf1c7;
+  --sidebar-accent: #504945;
+  --sidebar-accent-foreground: #ebdbb2;
+  --sidebar-border: #504945;
+  --sidebar-ring: #d65d0e;
+}
+
+.gruvbox-dark-hard {
+  --background: #1d2021;
+  --foreground: #ebdbb2;
+  --card: #282828;
+  --card-foreground: #ebdbb2;
+  --popover: #282828;
+  --popover-foreground: #ebdbb2;
+  --primary: #d65d0e;
+  --primary-foreground: #fbf1c7;
+  --secondary: #3c3836;
+  --secondary-foreground: #ebdbb2;
+  --muted: #282828;
+  --muted-foreground: #a89984;
+  --accent: #3c3836;
+  --accent-foreground: #ebdbb2;
+  --destructive: #cc241d;
+  --border: #3c3836;
+  --input: #3c3836;
+  --ring: #d65d0e;
+  --chart-1: #b8bb26;
+  --chart-2: #fabd2f;
+  --chart-3: #83a598;
+  --chart-4: #d3869b;
+  --chart-5: #8ec07c;
+  --sidebar: #1d2021;
+  --sidebar-foreground: #ebdbb2;
+  --sidebar-primary: #d65d0e;
+  --sidebar-primary-foreground: #fbf1c7;
+  --sidebar-accent: #3c3836;
+  --sidebar-accent-foreground: #ebdbb2;
+  --sidebar-border: #3c3836;
+  --sidebar-ring: #d65d0e;
 }
 
 @theme inline {

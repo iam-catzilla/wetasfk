@@ -3,13 +3,14 @@ import { VideoGrid } from "@/components/video-grid"
 import { Pagination } from "@/components/pagination"
 import { SearchFilters } from "./search-filters"
 import type { SortOrder, VideoSource } from "@/lib/types"
+import { ALL_SOURCES, DEFAULT_ENABLED } from "@/lib/source-config"
 
 interface Props {
   searchParams: Promise<{
     q?: string
     page?: string
     order?: string
-    source?: string
+    sources?: string
   }>
 }
 
@@ -18,16 +19,20 @@ export default async function SearchPage({ searchParams }: Props) {
   const query = params.q || ""
   const page = Math.max(1, parseInt(params.page || "1", 10) || 1)
   const order = (params.order || "most-popular") as SortOrder
-  const source = (params.source || "eporner") as VideoSource | "both"
+
+  // Use sources from URL, or fall back to the default enabled sources
+  const sources: VideoSource[] = params.sources
+    ? (params.sources.split(",").filter(Boolean) as VideoSource[])
+    : ALL_SOURCES.filter((s) => DEFAULT_ENABLED[s])
 
   const data = query
-    ? await unifiedSearch({ query, per_page: 36, page, order, source })
+    ? await unifiedSearch({ query, per_page: 36, page, order, sources })
     : null
 
   const sp: Record<string, string> = {}
   if (query) sp.q = query
   if (order) sp.order = order
-  if (source !== "eporner") sp.source = source
+  sp.sources = sources.join(",")
 
   return (
     <div className="flex flex-col gap-6">

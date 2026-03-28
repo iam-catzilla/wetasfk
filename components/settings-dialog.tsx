@@ -3,18 +3,79 @@
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
 import { useAppStore } from "@/lib/store"
 import { IconAdjustments, IconPalette, IconCheck } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import type { VideoSource } from "@/lib/types"
 
 type Section = "preferences" | "appearance"
-type VideoSource = "eporner" | "sxyporn" | "both"
 
-const SECTIONS: { id: Section; label: string; icon: typeof IconAdjustments }[] =
-  [
-    { id: "preferences", label: "Preferences", icon: IconAdjustments },
-    { id: "appearance", label: "Appearance", icon: IconPalette },
-  ]
+const SOURCE_INFO: Record<
+  VideoSource,
+  { label: string; description: string; defaultOn: boolean }
+> = {
+  eporner: {
+    label: "Eporner",
+    description: "Free HD videos via Eporner API",
+    defaultOn: true,
+  },
+  sxyporn: {
+    label: "SxyPrn",
+    description: "Alternative source with direct video playback",
+    defaultOn: true,
+  },
+  hqporner: {
+    label: "HQPorner",
+    description: "Curated HD content aggregator",
+    defaultOn: true,
+  },
+  xnxx: {
+    label: "XNXX",
+    description: "One of the largest video archives",
+    defaultOn: false,
+  },
+  motherless: {
+    label: "Motherless",
+    description: "User-uploaded amateur content",
+    defaultOn: false,
+  },
+  pornhoarder: {
+    label: "PornHoarder",
+    description: "Multi-source video aggregator",
+    defaultOn: false,
+  },
+  "7mmtv": {
+    label: "7mmtv",
+    description: "JAV streaming — censored, uncensored, amateur",
+    defaultOn: false,
+  },
+  javmost: {
+    label: "JavMost",
+    description: "Free JAV online — censored & uncensored",
+    defaultOn: false,
+  },
+}
+
+const SECTIONS: {
+  id: Section
+  label: string
+  icon: typeof IconAdjustments
+  description: string
+}[] = [
+  {
+    id: "preferences",
+    label: "Preferences",
+    icon: IconAdjustments,
+    description: "Configure video sources and other settings",
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: IconPalette,
+    description: "Choose themes and customize the look",
+  },
+]
 
 interface ThemeDef {
   id: string
@@ -114,22 +175,31 @@ const THEMES: ThemeDef[] = [
       muted: "#6272a4",
     },
   },
+  {
+    id: "gruvbox-dark-soft",
+    name: "Gruvbox Soft",
+    colors: {
+      bg: "#32302f",
+      surface: "#3c3836",
+      text: "#ebdbb2",
+      primary: "#d65d0e",
+      accent: "#504945",
+      muted: "#a89984",
+    },
+  },
+  {
+    id: "gruvbox-dark-hard",
+    name: "Gruvbox Hard",
+    colors: {
+      bg: "#1d2021",
+      surface: "#282828",
+      text: "#ebdbb2",
+      primary: "#d65d0e",
+      accent: "#3c3836",
+      muted: "#a89984",
+    },
+  },
 ]
-
-const VIDEO_SOURCES: { id: VideoSource; label: string; description: string }[] =
-  [
-    {
-      id: "eporner",
-      label: "Eporner",
-      description: "Free HD videos via Eporner API",
-    },
-    {
-      id: "sxyporn",
-      label: "SxyPrn",
-      description: "Alternative source with direct video playback",
-    },
-    { id: "both", label: "Both", description: "Aggregate from all sources" },
-  ]
 
 function ThemeCard({
   theme,
@@ -237,63 +307,178 @@ function ThemeCard({
   )
 }
 
+const SOURCE_CATEGORIES: {
+  label: string
+  description: string
+  sources: VideoSource[]
+}[] = [
+  {
+    label: "Premium Content",
+    description: "High-quality curated sources",
+    sources: ["eporner", "hqporner", "sxyporn"],
+  },
+  {
+    label: "Large Collections",
+    description: "Massive archives with varied content",
+    sources: ["xnxx", "motherless", "pornhoarder"],
+  },
+  {
+    label: "JAV",
+    description: "Japanese Adult Video sources",
+    sources: ["7mmtv", "javmost"],
+  },
+]
+
 function PreferencesSection() {
-  const { videoSource, setVideoSource } = useAppStore()
+  const { enabledSources, toggleSource } = useAppStore()
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h3 className="text-sm font-semibold">Video Sources</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Choose which sources to fetch videos from
+          Toggle which sources to fetch and aggregate videos from
         </p>
       </div>
-      <div className="flex flex-col gap-2">
-        {VIDEO_SOURCES.map((source) => (
-          <button
-            key={source.id}
-            onClick={() => setVideoSource(source.id)}
-            className={cn(
-              "flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-all",
-              videoSource === source.id
-                ? "border-primary/50 bg-primary/5"
-                : "border-border/60 hover:border-border hover:bg-accent/50"
-            )}
-          >
-            <div
-              className={cn(
-                "flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                videoSource === source.id
-                  ? "border-primary bg-primary"
-                  : "border-muted-foreground/40"
-              )}
-            >
-              {videoSource === source.id && (
-                <div className="size-1.5 rounded-full bg-primary-foreground" />
-              )}
+      <div className="flex flex-col gap-5">
+        {SOURCE_CATEGORIES.map((cat) => (
+          <div key={cat.label} className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                {cat.label}
+              </span>
+              <span className="text-[11px] text-muted-foreground/60">
+                {cat.description}
+              </span>
             </div>
-            <div>
-              <div className="text-sm font-medium">{source.label}</div>
-              <div className="text-xs text-muted-foreground">
-                {source.description}
-              </div>
-            </div>
-          </button>
+            {cat.sources.map((src) => {
+              const info = SOURCE_INFO[src]
+              const enabled = enabledSources[src]
+              return (
+                <div
+                  key={src}
+                  className={cn(
+                    "flex items-center justify-between gap-3 rounded-lg border px-4 py-3 transition-all",
+                    enabled
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-border/60 hover:border-border hover:bg-accent/50"
+                  )}
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{info.label}</span>
+                      {info.defaultOn && (
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          DEFAULT
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {info.description}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={() => toggleSource(src)}
+                  />
+                </div>
+              )
+            })}
+          </div>
         ))}
       </div>
     </div>
   )
 }
 
+const PRIMARY_COLORS = [
+  {
+    name: "Rose",
+    light: "oklch(0.514 0.222 16.935)",
+    dark: "oklch(0.455 0.188 13.697)",
+    hex: "#e11d48",
+  },
+  {
+    name: "Orange",
+    light: "oklch(0.633 0.209 38.0)",
+    dark: "oklch(0.633 0.209 38.0)",
+    hex: "#ea580c",
+  },
+  {
+    name: "Amber",
+    light: "oklch(0.735 0.175 73.0)",
+    dark: "oklch(0.735 0.175 73.0)",
+    hex: "#d97706",
+  },
+  {
+    name: "Green",
+    light: "oklch(0.565 0.163 152.0)",
+    dark: "oklch(0.565 0.163 152.0)",
+    hex: "#16a34a",
+  },
+  {
+    name: "Teal",
+    light: "oklch(0.600 0.118 184.0)",
+    dark: "oklch(0.600 0.118 184.0)",
+    hex: "#0d9488",
+  },
+  {
+    name: "Blue",
+    light: "oklch(0.546 0.224 264.0)",
+    dark: "oklch(0.546 0.224 264.0)",
+    hex: "#2563eb",
+  },
+  {
+    name: "Violet",
+    light: "oklch(0.541 0.234 303.0)",
+    dark: "oklch(0.541 0.234 303.0)",
+    hex: "#7c3aed",
+  },
+  {
+    name: "Pink",
+    light: "oklch(0.592 0.234 350.0)",
+    dark: "oklch(0.592 0.234 350.0)",
+    hex: "#db2777",
+  },
+]
+
 function AppearanceSection() {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [activeColor, setActiveColor] = useState<string | null>(null)
 
   useEffect(() => setMounted(true), [])
+
+  // Read current primary color from computed style on mount
+  useEffect(() => {
+    if (!mounted) return
+    const currentPrimary = getComputedStyle(document.documentElement)
+      .getPropertyValue("--primary")
+      .trim()
+    const match = PRIMARY_COLORS.find(
+      (c) =>
+        c.light === currentPrimary ||
+        c.dark === currentPrimary ||
+        c.hex === currentPrimary
+    )
+    if (match) setActiveColor(match.name)
+  }, [mounted, theme])
 
   if (!mounted) return null
 
   const currentTheme = theme === "system" ? resolvedTheme : theme
+  const isBasicTheme = currentTheme === "light" || currentTheme === "dark"
+
+  function applyPrimaryColor(color: (typeof PRIMARY_COLORS)[number]) {
+    const value = currentTheme === "light" ? color.light : color.dark
+    document.documentElement.style.setProperty("--primary", value)
+    document.documentElement.style.setProperty("--sidebar-primary", value)
+    document.documentElement.style.setProperty("--ring", value)
+    setActiveColor(color.name)
+    try {
+      localStorage.setItem("wetasfk-primary-color", color.name)
+    } catch {}
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -313,6 +498,40 @@ function AppearanceSection() {
           />
         ))}
       </div>
+
+      {isBasicTheme && (
+        <>
+          <div>
+            <h3 className="text-sm font-semibold">Accent Color</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Choose a primary accent color for the {currentTheme} theme
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {PRIMARY_COLORS.map((color) => (
+              <button
+                key={color.name}
+                onClick={() => applyPrimaryColor(color)}
+                className={cn(
+                  "group relative flex size-9 items-center justify-center rounded-full border-2 transition-all",
+                  activeColor === color.name
+                    ? "scale-110 border-primary"
+                    : "border-transparent hover:scale-105"
+                )}
+                title={color.name}
+              >
+                <span
+                  className="size-7 rounded-full"
+                  style={{ backgroundColor: color.hex }}
+                />
+                {activeColor === color.name && (
+                  <IconCheck className="absolute size-3.5 text-white drop-shadow-md" />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -327,28 +546,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-4xl">
         <DialogTitle className="sr-only">Settings</DialogTitle>
-        <div className="flex flex-col sm:min-h-100 sm:flex-row">
+        <div className="flex flex-col sm:min-h-150 sm:flex-row">
           {/* Desktop sidebar */}
-          <div className="hidden w-44 shrink-0 flex-col border-r border-border/60 bg-muted/30 p-3 sm:flex">
+          <div className="hidden w-60 shrink-0 flex-col border-r border-border/60 bg-muted/30 p-3 sm:flex">
             <span className="mb-2 px-2 py-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Settings
             </span>
-            <nav className="flex flex-col gap-0.5">
+            <nav className="flex flex-col gap-1">
               {SECTIONS.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setSection(s.id)}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                    "flex flex-col gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
                     section === s.id
                       ? "bg-accent font-medium text-foreground"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   )}
                 >
-                  <s.icon className="size-4" />
-                  {s.label}
+                  <div className="flex flex-row items-center gap-1">
+                    <s.icon className="size-4" />
+                    {s.label}
+                  </div>
+                  <span className="text-muted-foreground/50">
+                    {s.description}
+                  </span>
                 </button>
               ))}
             </nav>

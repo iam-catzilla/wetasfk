@@ -20,11 +20,14 @@ function ThemeProvider({
         "ayu-dark",
         "tokyo-night",
         "dracula",
+        "gruvbox-dark-soft",
+        "gruvbox-dark-hard",
       ]}
       disableTransitionOnChange
       {...props}
     >
       <ThemeHotkey />
+      <PrimaryColorRestore />
       {children}
     </NextThemesProvider>
   )
@@ -73,6 +76,55 @@ function ThemeHotkey() {
       window.removeEventListener("keydown", onKeyDown)
     }
   }, [resolvedTheme, setTheme])
+
+  return null
+}
+
+const PRIMARY_COLORS_MAP: Record<string, { light: string; dark: string }> = {
+  Rose: {
+    light: "oklch(0.514 0.222 16.935)",
+    dark: "oklch(0.455 0.188 13.697)",
+  },
+  Orange: { light: "oklch(0.633 0.209 38.0)", dark: "oklch(0.633 0.209 38.0)" },
+  Amber: { light: "oklch(0.735 0.175 73.0)", dark: "oklch(0.735 0.175 73.0)" },
+  Green: {
+    light: "oklch(0.565 0.163 152.0)",
+    dark: "oklch(0.565 0.163 152.0)",
+  },
+  Teal: { light: "oklch(0.600 0.118 184.0)", dark: "oklch(0.600 0.118 184.0)" },
+  Blue: { light: "oklch(0.546 0.224 264.0)", dark: "oklch(0.546 0.224 264.0)" },
+  Violet: {
+    light: "oklch(0.541 0.234 303.0)",
+    dark: "oklch(0.541 0.234 303.0)",
+  },
+  Pink: { light: "oklch(0.592 0.234 350.0)", dark: "oklch(0.592 0.234 350.0)" },
+}
+
+function PrimaryColorRestore() {
+  const { resolvedTheme } = useTheme()
+
+  React.useEffect(() => {
+    if (resolvedTheme !== "light" && resolvedTheme !== "dark") {
+      // For themed themes, clear any custom primary override
+      document.documentElement.style.removeProperty("--primary")
+      document.documentElement.style.removeProperty("--sidebar-primary")
+      document.documentElement.style.removeProperty("--ring")
+      return
+    }
+
+    try {
+      const saved = localStorage.getItem("wetasfk-primary-color")
+      if (saved && PRIMARY_COLORS_MAP[saved]) {
+        const value =
+          resolvedTheme === "light"
+            ? PRIMARY_COLORS_MAP[saved].light
+            : PRIMARY_COLORS_MAP[saved].dark
+        document.documentElement.style.setProperty("--primary", value)
+        document.documentElement.style.setProperty("--sidebar-primary", value)
+        document.documentElement.style.setProperty("--ring", value)
+      }
+    } catch {}
+  }, [resolvedTheme])
 
   return null
 }

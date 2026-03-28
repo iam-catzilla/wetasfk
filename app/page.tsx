@@ -3,22 +3,27 @@ import { VideoGrid } from "@/components/video-grid"
 import { CategoryPills } from "@/components/category-pills"
 import { Pagination } from "@/components/pagination"
 import type { SortOrder, VideoSource } from "@/lib/types"
+import { ALL_SOURCES, DEFAULT_ENABLED } from "@/lib/source-config"
 
 interface Props {
-  searchParams: Promise<{ page?: string; order?: string; source?: string }>
+  searchParams: Promise<{ page?: string; order?: string; sources?: string }>
 }
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page || "1", 10) || 1)
   const order = (params.order || "top-weekly") as SortOrder
-  const source = (params.source || "eporner") as VideoSource | "both"
+
+  // Use sources from URL, or fall back to the default enabled sources
+  const sources: VideoSource[] = params.sources
+    ? (params.sources.split(",").filter(Boolean) as VideoSource[])
+    : ALL_SOURCES.filter((s) => DEFAULT_ENABLED[s])
 
   const data = await unifiedSearch({
     per_page: 36,
     page,
     order,
-    source,
+    sources,
   })
 
   return (
@@ -40,7 +45,10 @@ export default async function HomePage({ searchParams }: Props) {
         currentPage={page}
         totalPages={Math.min(data.totalPages, 100)}
         baseUrl="/"
-        searchParams={{ order, ...(source !== "eporner" ? { source } : {}) }}
+        searchParams={{
+          order,
+          sources: sources.join(","),
+        }}
       />
     </div>
   )

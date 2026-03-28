@@ -1,4 +1,5 @@
 import { unifiedGetVideo, unifiedSearch, formatViews } from "@/lib/videos"
+import { resolveHandler } from "@/lib/source-registry"
 import { VideoGrid } from "@/components/video-grid"
 import { WatchPageClient } from "./watch-client"
 import { notFound } from "next/navigation"
@@ -11,12 +12,13 @@ interface Props {
 
 export default async function WatchPage({ params }: Props) {
   const { id } = await params
-  const isSxyprn = id.startsWith("sxyprn-")
-  const source = isSxyprn ? "sxyporn" : "eporner"
+
+  const resolved = resolveHandler(id)
+  const source = resolved?.source ?? "eporner"
 
   const [video, relatedData] = await Promise.all([
     unifiedGetVideo(id),
-    unifiedSearch({ per_page: 12, order: "most-popular", source }),
+    unifiedSearch({ per_page: 12, order: "most-popular", sources: [source] }),
   ])
 
   if (!video) notFound()

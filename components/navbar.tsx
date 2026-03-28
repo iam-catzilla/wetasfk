@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ThemeSwitcher } from "./theme-switcher"
 import { SettingsDialog } from "./settings-dialog"
+import { useAppStore } from "@/lib/store"
 import Image from "next/image"
 
 const NAV_LINKS = [
@@ -30,12 +31,17 @@ export function Navbar() {
   const [query, setQuery] = useState("")
   const [mobileOpen, setMobileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const getEnabledList = useAppStore((s) => s.getEnabledList)
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = query.trim()
     if (trimmed) {
-      router.push(`/search?q=${encodeURIComponent(trimmed)}`)
+      const enabled = getEnabledList()
+      const params = new URLSearchParams()
+      params.set("q", trimmed)
+      params.set("sources", enabled.join(","))
+      router.push(`/search?${params.toString()}`)
       setQuery("")
       setMobileOpen(false)
     }
