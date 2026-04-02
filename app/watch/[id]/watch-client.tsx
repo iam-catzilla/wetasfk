@@ -117,15 +117,7 @@ export function WatchPageActions({ video }: { video: UnifiedVideo }) {
         ) : (
           <IconHeart className="size-4" />
         )}
-        {favorited ? "Favorited" : "Favorite"}
-      </button>
-
-      <button
-        onClick={handleShare}
-        className="flex items-center gap-1.5 rounded-lg border border-border/60 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      >
-        <IconShare className="size-4" />
-        Share
+        {favorited ? "In Favorites" : "Add to Favorites"}
       </button>
 
       <button

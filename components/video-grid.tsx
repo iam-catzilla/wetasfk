@@ -23,7 +23,11 @@ export function VideoGrid({ videos, priorityCount = 4 }: VideoGridProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {videos.map((video, i) => (
-        <VideoCard key={video.id} video={video} priority={i < priorityCount} />
+        <VideoCard
+          key={`${video.source}-${video.id}`}
+          video={video}
+          priority={i < priorityCount}
+        />
       ))}
     </div>
   )

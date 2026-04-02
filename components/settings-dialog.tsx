@@ -9,15 +9,16 @@ import {
   IconAdjustments,
   IconPalette,
   IconCheck,
-  IconPlaylist,
+  IconDatabase,
   IconDownload,
   IconUpload,
   IconTrash,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import { useFavorites } from "@/hooks/use-favorites"
 import type { VideoSource, Playlist } from "@/lib/types"
 
-type Section = "preferences" | "appearance" | "playlists"
+type Section = "preferences" | "appearance" | "data"
 
 const SOURCE_INFO: Record<
   VideoSource,
@@ -84,10 +85,10 @@ const SECTIONS: {
     description: "Choose themes and customize the look",
   },
   {
-    id: "playlists",
-    label: "Playlists",
-    icon: IconPlaylist,
-    description: "Manage, export and import playlists",
+    id: "data",
+    label: "Data",
+    icon: IconDatabase,
+    description: "Playlists, favorites and backup",
   },
 ]
 
@@ -598,21 +599,30 @@ function AppearanceSection() {
   )
 }
 
-function PlaylistsSection() {
-  const { playlists, deletePlaylist, importPlaylist } = useAppStore()
+function DataSection() {
+  const {
+    playlists,
+    deletePlaylist,
+    importPlaylist,
+    favorites: videoFavs,
+    importVideoFavorites,
+  } = useAppStore()
+  const { favorites: modelFavs, importFavorites: importModelFavorites } =
+    useFavorites()
 
-  function exportPlaylist(pl: Playlist) {
-    const data = JSON.stringify(pl, null, 2)
-    const blob = new Blob([data], { type: "application/json" })
+  function downloadJson(data: unknown, filename: string) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `playlist-${pl.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  function handleImport() {
+  function pickJson(onParsed: (data: unknown) => void) {
     const input = document.createElement("input")
     input.type = "file"
     input.accept = ".json"
@@ -620,73 +630,156 @@ function PlaylistsSection() {
       const file = input.files?.[0]
       if (!file) return
       try {
-        const text = await file.text()
-        const data = JSON.parse(text)
-        if (data && data.name && Array.isArray(data.items)) {
-          importPlaylist(data as Playlist)
-        }
-      } catch {
-        // Invalid JSON — silently ignore
-      }
+        onParsed(JSON.parse(await file.text()))
+      } catch {}
     }
     input.click()
   }
 
+  function exportPlaylist(pl: Playlist) {
+    downloadJson(
+      pl,
+      `playlist-${pl.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`
+    )
+  }
+
+  function handleImportPlaylist() {
+    pickJson((data) => {
+      const d = data as Record<string, unknown>
+      if (d && d.name && Array.isArray(d.items))
+        importPlaylist(d as unknown as Playlist)
+    })
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold">Playlists</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Manage, export and import your playlists
-          </p>
+    <div className="flex flex-col gap-8">
+      {/* Playlists */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold">Playlists</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Manage, export and import your playlists
+            </p>
+          </div>
+          <button
+            onClick={handleImportPlaylist}
+            className="mr-4 flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <IconDownload className="size-4" />
+            Import
+          </button>
         </div>
-        <button
-          onClick={handleImport}
-          className="mr-4 flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <IconDownload className="size-4" />
-          Import
-        </button>
+        {playlists.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {playlists.map((pl) => (
+              <div
+                key={pl.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-4 py-3"
+              >
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium">
+                    {pl.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {pl.items.length} video{pl.items.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => exportPlaylist(pl)}
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title="Export playlist"
+                  >
+                    <IconUpload className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => deletePlaylist(pl.id)}
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    title="Delete playlist"
+                  >
+                    <IconTrash className="size-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-lg py-8 text-center text-sm text-muted-foreground">
+            No playlists yet. Create one from any watch page.
+          </p>
+        )}
       </div>
 
-      {playlists.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          {playlists.map((pl) => (
-            <div
-              key={pl.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-4 py-3"
-            >
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-medium">{pl.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {pl.items.length} video{pl.items.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => exportPlaylist(pl)}
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  title="Export playlist"
-                >
-                  <IconDownload className="size-4" />
-                </button>
-                <button
-                  onClick={() => deletePlaylist(pl.id)}
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  title="Delete playlist"
-                >
-                  <IconTrash className="size-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+      <div className="h-px bg-border/50" />
+
+      {/* Video Favorites */}
+      <div className="flex flex-col gap-3">
+        <div>
+          <h3 className="text-sm font-semibold">Video Favorites</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {videoFavs.length} saved video{videoFavs.length !== 1 ? "s" : ""}
+          </p>
         </div>
-      ) : (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No playlists yet. Create one from any watch page.
-        </p>
-      )}
+        <div className="flex gap-2">
+          <button
+            onClick={() => downloadJson(videoFavs, "video-favorites.json")}
+            disabled={videoFavs.length === 0}
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <IconUpload className="size-4" />
+            Export
+          </button>
+          <button
+            onClick={() =>
+              pickJson((data) => {
+                if (Array.isArray(data))
+                  importVideoFavorites(
+                    data as Parameters<typeof importVideoFavorites>[0]
+                  )
+              })
+            }
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <IconDownload className="size-4" />
+            Import
+          </button>
+        </div>
+      </div>
+
+      <div className="h-px bg-border/50" />
+
+      {/* Model Favorites */}
+      <div className="flex flex-col gap-3">
+        <div>
+          <h3 className="text-sm font-semibold">Model Favorites</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {modelFavs.length} saved model{modelFavs.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => downloadJson(modelFavs, "model-favorites.json")}
+            disabled={modelFavs.length === 0}
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <IconUpload className="size-4" />
+            Export
+          </button>
+          <button
+            onClick={() =>
+              pickJson((data) => {
+                if (Array.isArray(data))
+                  importModelFavorites(data as typeof modelFavs)
+              })
+            }
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <IconDownload className="size-4" />
+            Import
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -701,7 +794,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-5xl">
+      <DialogContent
+        className="no-scrollbar max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-5xl"
+        showCloseButton={false}
+      >
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <div className="flex flex-col sm:min-h-175 sm:flex-row">
           {/* Desktop sidebar */}
@@ -753,10 +849,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="no-scrollbar flex-1 overflow-y-auto p-6">
             {section === "preferences" && <PreferencesSection />}
             {section === "appearance" && <AppearanceSection />}
-            {section === "playlists" && <PlaylistsSection />}
+            {section === "data" && <DataSection />}
           </div>
         </div>
       </DialogContent>

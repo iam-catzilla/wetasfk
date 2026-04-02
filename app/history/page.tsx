@@ -41,12 +41,14 @@ export default function HistoryPage() {
             >
               <div className="relative aspect-video w-full overflow-hidden bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.thumb}
-                  alt={item.title}
-                  className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
+                {item.thumb ? (
+                  <img
+                    src={item.thumb}
+                    alt={item.title}
+                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                ) : null}
                 <div className="absolute right-2 bottom-2 rounded-md bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">
                   {item.duration}
                 </div>

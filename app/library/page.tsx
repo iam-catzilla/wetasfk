@@ -3,10 +3,10 @@
 import { useAppStore } from "@/lib/store"
 import Link from "next/link"
 import {
-  IconPlaylist,
   IconTrash,
   IconPlayerPlay,
   IconFolderOpen,
+  IconDeviceTv,
 } from "@tabler/icons-react"
 
 export default function LibraryPage() {
@@ -17,7 +17,7 @@ export default function LibraryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-2 font-heading text-2xl font-bold tracking-tight">
-            <IconPlaylist className="size-6 text-primary" />
+            <IconDeviceTv className="size-6 text-primary" />
             Library
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ export default function LibraryPage() {
                   </div>
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    <IconPlaylist className="size-12 text-muted-foreground/30" />
+                    <IconDeviceTv className="size-12 text-muted-foreground/30" />
                   </div>
                 )}
                 <div className="absolute right-2 bottom-2 rounded-md bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">

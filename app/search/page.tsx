@@ -4,14 +4,54 @@ import { Pagination } from "@/components/pagination"
 import { SearchFilters } from "./search-filters"
 import type { SortOrder, VideoSource } from "@/lib/types"
 import { ALL_SOURCES, DEFAULT_ENABLED } from "@/lib/source-config"
+import type { Metadata } from "next"
 
-interface Props {
+type Props = {
   searchParams: Promise<{
     q?: string
     page?: string
     order?: string
     sources?: string
   }>
+}
+
+export async function generateMetadata({
+  searchParams,
+}: Props): Promise<Metadata> {
+  const params = await searchParams
+  const query = params.q || ""
+  return {
+    title: query
+      ? `"${query}" – Free HD Porn Videos`
+      : "Search Free Porn Videos – Find Any XXX",
+    description: query
+      ? `Watch free HD porn videos for "${query}". Browse thousands of results across Eporner, HQPorner, xnxx, motherless and more.`
+      : "Search millions of free HD adult videos across all major platforms. Find any porn, any category, any model – instantly.",
+    keywords: query
+      ? [
+          query,
+          `${query} porn`,
+          `${query} xxx`,
+          `${query} sex video`,
+          `free ${query} videos`,
+        ]
+      : [
+          "search porn videos",
+          "find xxx videos",
+          "porn search engine",
+          "free adult video search",
+          "search sex videos online",
+          "find porn by category",
+          "xxx search",
+          "hd porn search",
+        ],
+    alternates: {
+      canonical: query ? `/search?q=${encodeURIComponent(query)}` : "/search",
+    },
+    robots: query
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
+  }
 }
 
 export default async function SearchPage({ searchParams }: Props) {
@@ -53,7 +93,10 @@ export default async function SearchPage({ searchParams }: Props) {
 
       {data ? (
         <>
-          <VideoGrid videos={data.videos} />
+          <VideoGrid
+            key={`search-${query}-${page}-${order}`}
+            videos={data.videos}
+          />
           <Pagination
             currentPage={page}
             totalPages={Math.min(data.totalPages, 100)}

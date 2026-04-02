@@ -5,13 +5,12 @@ import { use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  IconPlaylist,
   IconTrash,
   IconPlayerPlay,
   IconArrowLeft,
   IconEdit,
   IconCheck,
-  IconGripVertical,
+  IconDeviceTv,
 } from "@tabler/icons-react"
 import { useState } from "react"
 
@@ -36,7 +35,7 @@ export default function PlaylistPage({ params }: Props) {
   if (!playlist) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <IconPlaylist className="mb-4 size-12 text-muted-foreground/40" />
+        <IconDeviceTv className="mb-4 size-12 text-muted-foreground/40" />
         <p className="text-lg font-medium text-muted-foreground">
           Playlist not found
         </p>
@@ -193,7 +192,7 @@ export default function PlaylistPage({ params }: Props) {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <IconPlaylist className="mb-4 size-12 text-muted-foreground/40" />
+          <IconDeviceTv className="mb-4 size-12 text-muted-foreground/40" />
           <p className="text-lg font-medium text-muted-foreground">
             This playlist is empty
           </p>

@@ -32,6 +32,8 @@ interface AppStore {
   toggleSource: (source: VideoSource) => void
   getEnabledList: () => VideoSource[]
 
+  importVideoFavorites: (items: FavoriteItem[]) => void
+
   // Playlist
   playlists: Playlist[]
   createPlaylist: (name: string) => string
@@ -79,6 +81,13 @@ export const useAppStore = create<AppStore>()(
         }),
 
       clearSearchHistory: () => set({ searchHistory: [] }),
+
+      importVideoFavorites: (items) =>
+        set((state) => {
+          const existingIds = new Set(state.favorites.map((f) => f.id))
+          const newItems = items.filter((f) => !existingIds.has(f.id))
+          return { favorites: [...state.favorites, ...newItems] }
+        }),
 
       enabledSources: { ...DEFAULT_ENABLED },
       toggleSource: (source) =>
