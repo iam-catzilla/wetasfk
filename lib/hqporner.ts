@@ -42,7 +42,9 @@ export function parseListPage(html: string): ScrapedVideo[] {
       const linkMatch = section.match(/href="(\/hdporn\/(\d+)-([^"]+)\.html)"/)
       if (!linkMatch) continue
       const url = linkMatch[1]
-      const id = linkMatch[2]
+      const numericId = linkMatch[2]
+      const slug = linkMatch[3]
+      const id = `${numericId}~${slug}`
 
       // Thumbnail from defaultImage call — proxy through /api/img to bypass ISP blocks
       const thumbMatch = section.match(/defaultImage\("([^"]+)"/)
@@ -91,6 +93,8 @@ export function parseListPage(html: string): ScrapedVideo[] {
 
 export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
   try {
+    const [numericId, slug = ""] = id.split("~")
+
     // Title
     const titleMatch =
       html.match(/<h1[^>]*class="[^"]*main-h1[^"]*"[^>]*>([^<]+)</)?.[1] ||
@@ -132,7 +136,8 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
     const actressMatches = html.matchAll(
       /href="\/actress\/[^"]*"[^>]*>([^<]+)</g
     )
-    for (const m of actressMatches) tags.push(m[1].trim())
+    const performers: string[] = []
+    for (const m of actressMatches) performers.push(m[1].trim())
 
     return {
       id,
@@ -144,7 +149,8 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
       rating: "",
       quality: "HD",
       tags,
-      url: `/hdporn/${id}`,
+      performers,
+      url: slug ? `/hdporn/${numericId}-${slug}.html` : `/hdporn/${numericId}`,
       embedUrl: `/api/hqporner/player/${id}`,
       added: "",
     }
@@ -266,17 +272,32 @@ export async function browseHqpornerDirect(
   return { videos, page, hasMore }
 }
 
+export async function browseHqpornerActressDirect(
+  slug: string,
+  page = 1
+): Promise<ScrapedSearchResponse> {
+  const normalizedSlug = slug.replace(/^\/+|\/+$/g, "")
+  const hqPath =
+    page <= 1
+      ? `/actress/${normalizedSlug}`
+      : `/actress/${normalizedSlug}/${page}`
+  const html = await fetchHQDirect(hqPath)
+  const videos = parseListPage(html)
+  const hasMore =
+    html.includes(">Next<") ||
+    html.includes('rel="next"') ||
+    videos.length >= 20
+  return { videos, page, hasMore }
+}
+
 export async function getHqpornerVideoDirect(
   id: string
 ): Promise<ScrapedVideo | null> {
   try {
-    const searchHtml = await fetchHQDirect(`/?q=${id}`)
-    const linkMatch = searchHtml.match(
-      new RegExp(`href="(/hdporn/${id}-[^"]+\\.html)"`)
-    )
-    const html = linkMatch
-      ? await fetchHQDirect(linkMatch[1])
-      : await fetchHQDirect(`/hdporn/${id}.html`)
+    const [numericId, slug = ""] = id.split("~")
+    const html = slug
+      ? await fetchHQDirect(`/hdporn/${numericId}-${slug}.html`)
+      : await fetchHQDirect(`/hdporn/${numericId}.html`)
     return parseVideoPage(html, id)
   } catch {
     return null

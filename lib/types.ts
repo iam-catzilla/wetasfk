@@ -89,6 +89,8 @@ export type VideoSource =
   | "sxyporn"
   | "xnxx"
   | "hqporner"
+  | "porntrex"
+  | "redtube"
   | "motherless"
   | "pornhoarder"
   | "7mmtv"
@@ -99,6 +101,7 @@ export interface UnifiedVideo {
   source: VideoSource
   title: string
   keywords: string
+  performers: string[]
   views: number
   rating: string
   url: string
@@ -107,6 +110,8 @@ export interface UnifiedVideo {
   durationStr: string
   /** iframe embed URL (eporner) or direct .vid CDN url (sxyprn) */
   embedUrl: string
+  downloadUrl?: string
+  previewUrl?: string
   thumb: string
   thumbs: string[]
   /** extra: resolution label like "HD" */
@@ -151,14 +156,17 @@ export interface ScrapedVideo {
   id: string
   title: string
   thumb: string
+  previewUrl?: string
   duration: string
   durationSec: number
   views: number
   rating: string
   quality: string
   tags: string[]
+  performers?: string[]
   url: string
   embedUrl: string
+  downloadUrl?: string
   added: string
 }
 

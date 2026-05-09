@@ -18,6 +18,13 @@ function parseDurationToSec(dur: string): number {
   return 0
 }
 
+function proxyPornhoarderThumb(url: string): string {
+  if (!url) return ""
+
+  const normalized = url.startsWith("//") ? `https:${url}` : url
+  return `/api/img?url=${encodeURIComponent(normalized)}`
+}
+
 // ─── Parse PornHoarder list page ────────────────────────
 
 export function parseListPage(html: string): ScrapedVideo[] {
@@ -51,7 +58,7 @@ export function parseListPage(html: string): ScrapedVideo[] {
       const thumbMatch = entry.match(
         /class="video-image primary b-lazy"\s*data-src="([^"]+)"/
       )
-      const thumb = thumbMatch ? thumbMatch[1] : ""
+      const thumb = thumbMatch ? proxyPornhoarderThumb(thumbMatch[1]) : ""
 
       // Duration from video-length
       const durMatch = entry.match(/class="video-length"[^>]*>([^<]+)</)
@@ -121,7 +128,7 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
     const thumbMatch = html.match(
       /class="video-image[^"]*"\s*(?:data-src|src)="([^"]+)"/
     )
-    const thumb = thumbMatch ? thumbMatch[1] : ""
+    const thumb = thumbMatch ? proxyPornhoarderThumb(thumbMatch[1]) : ""
 
     // Duration
     const durMatch = html.match(/class="video-length"[^>]*>([^<]+)</)
@@ -208,6 +215,7 @@ export async function getPornhoarderVideo(
 // ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
 
 const PH_BASE_DIRECT = "https://pornhoarder.tv"
+const PH_PROXY_URL = "https://api.codetabs.com/v1/proxy/?quest="
 const PH_ALL_SERVERS = [
   "33",
   "47",
@@ -226,17 +234,41 @@ const PH_ALL_SERVERS = [
 ]
 
 async function fetchPHDirect(path: string): Promise<string> {
-  const res = await fetch(`${PH_BASE_DIRECT}${path}`, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-    next: { revalidate: 300 },
-  })
-  if (!res.ok) throw new Error(`pornhoarder fetch error: ${res.status}`)
-  return res.text()
+  const target = `${PH_BASE_DIRECT}${path}`
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    Referer: `${PH_BASE_DIRECT}/`,
+  }
+
+  try {
+    const res = await fetch(target, {
+      headers,
+      next: { revalidate: 300 },
+    })
+
+    if (!res.ok) {
+      throw new Error(`pornhoarder fetch error: ${res.status}`)
+    }
+
+    return res.text()
+  } catch {
+    const proxied = await fetch(
+      `${PH_PROXY_URL}${encodeURIComponent(target)}`,
+      {
+        headers,
+        next: { revalidate: 300 },
+      }
+    )
+
+    if (!proxied.ok) {
+      throw new Error(`pornhoarder proxy fetch error: ${proxied.status}`)
+    }
+
+    return proxied.text()
+  }
 }
 
 async function ajaxSearchDirect(query: string, page: number): Promise<string> {
@@ -262,7 +294,7 @@ export async function searchPornhoarderDirect(
   try {
     html = await ajaxSearchDirect(query, page)
   } catch {
-    const phPath = page <= 1 ? "/welcome/" : `/welcome/?page=${page}`
+    const phPath = page <= 1 ? "/welcome/" : `/welcome/${page}`
     html = await fetchPHDirect(phPath)
   }
   const videos = parseListPage(html)
@@ -273,7 +305,11 @@ export async function searchPornhoarderDirect(
 export async function browsePornhoarderDirect(
   page = 1
 ): Promise<ScrapedSearchResponse> {
-  const phPath = page <= 1 ? "/welcome/" : `/welcome/?page=${page}`
+  if (page > 1) {
+    return { videos: [], page, hasMore: false }
+  }
+
+  const phPath = page <= 1 ? "/welcome/" : `/welcome/${page}`
   const html = await fetchPHDirect(phPath)
   const videos = parseListPage(html)
   const hasMore = videos.length >= 20

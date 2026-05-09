@@ -143,6 +143,14 @@ function parseVideoPage(html: string, id: string): ScrapedVideo | null {
     const tags: string[] = []
     for (const m of tagMatches) tags.push(m[1].trim())
 
+    const performers: string[] = []
+    for (const m of html.matchAll(
+      /href="https?:\/\/vjav\.com\/(?:models|pornstars|actresses?)\/([^/"?#]+)\/?"/g
+    )) {
+      const name = decodeHtml(decodeURIComponent(m[1].replace(/[-_]+/g, " ")))
+      if (name) performers.push(name)
+    }
+
     return {
       id,
       title,
@@ -153,6 +161,7 @@ function parseVideoPage(html: string, id: string): ScrapedVideo | null {
       rating: "",
       quality: "",
       tags,
+      performers: [...new Set(performers)],
       url: `https://vjav.com/videos/${id}/`,
       embedUrl: `/api/vjav/player/${id}`,
       added: "",

@@ -102,6 +102,15 @@ export default function FeedPage() {
     }
   }
 
+  async function loadMore() {
+    setIsFetchingMore(true)
+    const nextOffset = offset + 10
+    const newVideos = await fetchVideos(nextOffset)
+    setVideoPosts((prev) => [...prev, ...newVideos])
+    setOffset(nextOffset)
+    setIsFetchingMore(false)
+  }
+
   useEffect(() => {
     const initFeed = async () => {
       if (favorites.length === 0) {
@@ -165,15 +174,6 @@ export default function FeedPage() {
 
     return () => observer.disconnect()
   }, [isFetchingMore, videoPosts.length])
-
-  const loadMore = async () => {
-    setIsFetchingMore(true)
-    const nextOffset = offset + 10
-    const newVideos = await fetchVideos(nextOffset)
-    setVideoPosts((prev) => [...prev, ...newVideos])
-    setOffset(nextOffset)
-    setIsFetchingMore(false)
-  }
 
   const scrollToNext = (index: number) => {
     if (containerRef.current) {

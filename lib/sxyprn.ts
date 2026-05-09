@@ -300,31 +300,39 @@ async function fetchSxyprnDirect(path: string): Promise<string> {
     next: { revalidate: 300 },
   })
   if (!res.ok) throw new Error(`sxyprn fetch error: ${res.status}`)
-  return res.text()
+  const html = await res.text()
+  if (
+    html.includes("<title>Just a moment...</title>") ||
+    html.includes("challenge-platform")
+  ) {
+    throw new Error("sxyprn challenge page")
+  }
+  return html
 }
 
 export async function searchSxyprnQueryDirect(
   query: string,
-  page = 0,
+  page = 1,
   mode = "trending"
 ): Promise<SxyprnSearchResponse> {
   let sxyprnPath: string
   if (query) {
     const safeQuery = query.replace(/\s+/g, "-")
-    sxyprnPath = `/${encodeURIComponent(safeQuery)}.html?sm=${mode}&p=${page}`
+    const safePage = Math.max(1, page)
+    sxyprnPath = `/${encodeURIComponent(safeQuery)}.html?sm=${mode}&p=${safePage}`
   } else {
     switch (mode) {
       case "top-viewed":
-        sxyprnPath = `/popular/top-viewed.html?p=${page}`
+        sxyprnPath = `/popular/top-viewed.html?p=${Math.max(1, page)}`
         break
       case "top-rated":
-        sxyprnPath = `/popular/top-pop.html?p=${page}`
+        sxyprnPath = `/popular/top-pop.html?p=${Math.max(1, page)}`
         break
       case "latest":
-        sxyprnPath = `/blog/all/${page}.html`
+        sxyprnPath = `/blog/all/${Math.max(1, page)}.html`
         break
       default:
-        sxyprnPath = page === 0 ? "/" : `/?p=${page}`
+        sxyprnPath = page <= 1 ? "/" : `/?p=${page}`
         break
     }
   }

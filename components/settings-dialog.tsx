@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTheme } from "next-themes"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useFavorites } from "@/hooks/use-favorites"
 import type { VideoSource, Playlist } from "@/lib/types"
+import { toast } from "sonner"
 
 type Section = "preferences" | "appearance" | "data"
 
@@ -37,6 +38,16 @@ const SOURCE_INFO: Record<
   hqporner: {
     label: "HQPorner",
     description: "Premium source with high-quality videos, might be slow",
+    defaultOn: false,
+  },
+  porntrex: {
+    label: "PornTrex",
+    description: "Large HD and 4K archive with model pages and embeds",
+    defaultOn: false,
+  },
+  redtube: {
+    label: "RedTube",
+    description: "Mainstream archive with rich pornstar metadata",
     defaultOn: false,
   },
   xnxx: {
@@ -378,12 +389,12 @@ const SOURCE_CATEGORIES: {
   {
     label: "Premium Content",
     description: "High-quality curated sources",
-    sources: ["eporner", "hqporner", "sxyporn"],
+    sources: ["eporner", "hqporner", "sxyporn", "porntrex"],
   },
   {
     label: "Large Collections",
     description: "Massive archives with varied content",
-    sources: ["xnxx", "motherless", "pornhoarder"],
+    sources: ["xnxx", "redtube", "motherless", "pornhoarder"],
   },
   {
     label: "JAV",
@@ -507,37 +518,30 @@ const PRIMARY_COLORS = [
 
 function AppearanceSection() {
   const { theme, setTheme, resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  const [activeColor, setActiveColor] = useState<string | null>(null)
-
-  useEffect(() => setMounted(true), [])
-
-  // Read current primary color from computed style on mount
-  useEffect(() => {
-    if (!mounted) return
-    const currentPrimary = getComputedStyle(document.documentElement)
-      .getPropertyValue("--primary")
-      .trim()
-    const match = PRIMARY_COLORS.find(
-      (c) =>
-        c.light === currentPrimary ||
-        c.dark === currentPrimary ||
-        c.hex === currentPrimary
-    )
-    if (match) setActiveColor(match.name)
-  }, [mounted, theme])
-
-  if (!mounted) return null
+  const [colorVersion, setColorVersion] = useState(0)
 
   const currentTheme = theme === "system" ? resolvedTheme : theme
   const isBasicTheme = currentTheme === "light" || currentTheme === "dark"
+  const activeColor =
+    typeof window === "undefined"
+      ? null
+      : PRIMARY_COLORS.find((color) => {
+          const currentPrimary = getComputedStyle(document.documentElement)
+            .getPropertyValue("--primary")
+            .trim()
+          return (
+            color.light === currentPrimary ||
+            color.dark === currentPrimary ||
+            color.hex === currentPrimary
+          )
+        })?.name || null
 
   function applyPrimaryColor(color: (typeof PRIMARY_COLORS)[number]) {
     const value = currentTheme === "light" ? color.light : color.dark
     document.documentElement.style.setProperty("--primary", value)
     document.documentElement.style.setProperty("--sidebar-primary", value)
     document.documentElement.style.setProperty("--ring", value)
-    setActiveColor(color.name)
+    setColorVersion((version) => version + 1)
     try {
       localStorage.setItem("wetasfk-primary-color", color.name)
     } catch {}
@@ -573,7 +577,7 @@ function AppearanceSection() {
           <div className="flex flex-wrap gap-2">
             {PRIMARY_COLORS.map((color) => (
               <button
-                key={color.name}
+                key={`${color.name}-${colorVersion}`}
                 onClick={() => applyPrimaryColor(color)}
                 className={cn(
                   "group relative flex size-9 items-center justify-center rounded-full border-2 transition-all",
@@ -622,6 +626,32 @@ function DataSection() {
     URL.revokeObjectURL(url)
   }
 
+  function downloadText(text: string, filename: string, type: string) {
+    const blob = new Blob([text], { type })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function csvCell(value: string | number) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`
+  }
+
+  function downloadCsv(
+    rows: Array<Array<string | number>>,
+    filename: string,
+    headers: string[]
+  ) {
+    const csv = [headers, ...rows]
+      .map((row) => row.map((value) => csvCell(value)).join(","))
+      .join("\n")
+
+    downloadText(csv, filename, "text/csv;charset=utf-8")
+  }
+
   function pickJson(onParsed: (data: unknown) => void) {
     const input = document.createElement("input")
     input.type = "file"
@@ -641,6 +671,77 @@ function DataSection() {
       pl,
       `playlist-${pl.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`
     )
+  }
+
+  function exportPlaylistCsv(pl: Playlist) {
+    downloadCsv(
+      pl.items.map((item) => [
+        pl.name,
+        item.id,
+        item.title,
+        item.duration,
+        `/watch/${item.id}`,
+      ]),
+      `playlist-${pl.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`,
+      ["playlist", "videoId", "title", "duration", "watchUrl"]
+    )
+  }
+
+  async function batchDownloadPlaylist(pl: Playlist) {
+    if (!pl.items.length) {
+      toast.info("This playlist is empty")
+      return
+    }
+
+    const loading = toast.loading("Resolving downloadable videos...")
+
+    try {
+      const params = new URLSearchParams()
+      for (const item of pl.items) {
+        params.append("id", item.id)
+      }
+
+      const response = await fetch(`/api/download-links?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error("Failed to resolve download links")
+      }
+
+      const data = (await response.json()) as {
+        items: Array<{
+          id: string
+          title: string
+          downloadUrl: string | null
+          downloadable: boolean
+        }>
+      }
+
+      const downloadableItems = data.items.filter(
+        (item) => item.downloadable && item.downloadUrl
+      )
+
+      toast.dismiss(loading)
+
+      if (!downloadableItems.length) {
+        toast.info("No direct downloads are available for this playlist yet")
+        return
+      }
+
+      for (const item of downloadableItems) {
+        const anchor = document.createElement("a")
+        anchor.href = item.downloadUrl as string
+        anchor.download = `${item.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || item.id}.mp4`
+        anchor.rel = "noopener noreferrer"
+        anchor.target = "_blank"
+        anchor.click()
+      }
+
+      toast.success(
+        `Started ${downloadableItems.length} download${downloadableItems.length === 1 ? "" : "s"}`
+      )
+    } catch {
+      toast.dismiss(loading)
+      toast.error("Failed to batch download this playlist")
+    }
   }
 
   function handleImportPlaylist() {
@@ -689,9 +790,23 @@ function DataSection() {
                   <button
                     onClick={() => exportPlaylist(pl)}
                     className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    title="Export playlist"
+                    title="Export playlist JSON"
                   >
                     <IconUpload className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => exportPlaylistCsv(pl)}
+                    className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title="Export playlist CSV"
+                  >
+                    CSV
+                  </button>
+                  <button
+                    onClick={() => batchDownloadPlaylist(pl)}
+                    className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title="Batch download supported videos"
+                  >
+                    Batch
                   </button>
                   <button
                     onClick={() => deletePlaylist(pl.id)}
@@ -732,6 +847,25 @@ function DataSection() {
           </button>
           <button
             onClick={() =>
+              downloadCsv(
+                videoFavs.map((item) => [
+                  item.id,
+                  item.title,
+                  item.duration,
+                  new Date(item.addedAt).toISOString(),
+                  `/watch/${item.id}`,
+                ]),
+                "video-favorites.csv",
+                ["videoId", "title", "duration", "addedAt", "watchUrl"]
+              )
+            }
+            disabled={videoFavs.length === 0}
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            CSV
+          </button>
+          <button
+            onClick={() =>
               pickJson((data) => {
                 if (Array.isArray(data))
                   importVideoFavorites(
@@ -765,6 +899,19 @@ function DataSection() {
           >
             <IconUpload className="size-4" />
             Export
+          </button>
+          <button
+            onClick={() =>
+              downloadCsv(
+                modelFavs.map((item) => [item.id, item.name, item.service]),
+                "model-favorites.csv",
+                ["modelId", "name", "service"]
+              )
+            }
+            disabled={modelFavs.length === 0}
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            CSV
           </button>
           <button
             onClick={() =>

@@ -1,3 +1,5 @@
+const TAG_WIDTHS = [72, 94, 88, 116, 82, 108, 76, 98]
+
 export default function WatchLoading() {
   return (
     <div className="flex flex-col gap-8 lg:flex-row">
@@ -31,11 +33,11 @@ export default function WatchLoading() {
 
         {/* Tags skeleton */}
         <div className="flex flex-wrap gap-2">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {TAG_WIDTHS.map((width, i) => (
             <div
               key={i}
               className="h-7 animate-pulse rounded-full bg-muted"
-              style={{ width: 60 + Math.random() * 60 }}
+              style={{ width }}
             />
           ))}
         </div>

@@ -1,4 +1,4 @@
-import { unifiedSearch } from "@/lib/videos"
+import { unifiedSearch } from "@/lib/server-video-data"
 import { VideoGrid } from "@/components/video-grid"
 import { CategoryPills } from "@/components/category-pills"
 import { Pagination } from "@/components/pagination"

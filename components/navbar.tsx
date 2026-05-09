@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import {
   IconSearch,
-  IconHeart,
   IconFlame,
   IconMenu2,
   IconX,
@@ -13,13 +12,9 @@ import {
   IconSettings,
   IconDeviceTv,
   IconChevronDown,
-  IconUsers,
   IconTrendingUp,
   IconDice,
-  IconStar,
   IconMovie,
-  IconFileText,
-  IconBookmark,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import { SettingsDialog } from "./settings-dialog"
@@ -40,16 +35,33 @@ const VIDEO_LINKS = [
   { href: "/history", label: "History", icon: IconHistory },
 ]
 
-const MODEL_LINKS = [
+const ONLYFANS_MODEL_LINKS = [
   { href: "/models/search", label: "Search", icon: IconSearch },
   { href: "/models/random", label: "Random", icon: IconDice },
 ]
 
-const POST_LINKS = [
+const ONLYFANS_POST_LINKS = [
   { href: "/posts/search", label: "Search", icon: IconSearch },
   { href: "/posts/random", label: "Random", icon: IconDice },
   { href: "/posts/popular", label: "Popular", icon: IconTrendingUp },
 ]
+
+const ONLYFANS_LINKS = [...ONLYFANS_MODEL_LINKS, ...ONLYFANS_POST_LINKS]
+
+function OnlyFansIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="-20.62 0.53 820.42 555.49" className={className}>
+      <path
+        d="M266.82.53c35 0 69.65 6.91 101.98 20.34s61.71 33.11 86.45 57.93c24.75 24.81 44.37 54.27 57.77 86.7a267.919 267.919 0 0 1 20.29 102.27c0 108.09-64.93 205.53-164.51 246.89s-214.2 18.5-290.41-57.93C2.18 380.3-20.62 265.36 20.62 165.5 61.87 65.64 159.04.53 266.82.53zm0 347.4c10.5.01 20.9-2.05 30.61-6.07s18.52-9.93 25.95-17.38 13.31-16.29 17.33-26.02a80.365 80.365 0 0 0 6.06-30.7c0-32.43-19.48-61.66-49.35-74.07s-64.26-5.55-87.12 17.38-29.7 57.41-17.33 87.37 41.53 49.49 73.86 49.49z"
+        fill="currentColor"
+      />
+      <path
+        d="M566.35 200.96c67.71 19.54 147.63 0 147.63 0-23.19 101.55-96.75 165.15-202.81 172.89a266.766 266.766 0 0 1-40.48 65.86 266.208 266.208 0 0 1-57.62 51.43c-21.6 14.24-45.15 25.25-69.92 32.68s-50.48 11.19-76.33 11.18l79.95-254.81C428.95 18.28 471.08.54 665.98.54H799.8c-22.38 98.88-99.54 174.41-233.44 200.42z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
 
 export function Navbar() {
   const pathname = usePathname()
@@ -158,42 +170,28 @@ export function Navbar() {
             Feed
           </Link>
 
-          {/* Favorites */}
-          <Link
-            href="/favorites"
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              pathname === "/favorites"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            )}
-          >
-            <IconHeart className="size-4" />
-            Favorites
-          </Link>
-
-          {/* Models Dropdown */}
+          {/* OnlyFans Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors outline-none",
-                  isAnyActive(MODEL_LINKS)
+                  isAnyActive(ONLYFANS_LINKS)
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                <IconUsers className="size-4" />
-                Models
+                <OnlyFansIcon className="size-4 text-primary" />
+                OnlyFans
                 <IconChevronDown className="size-3 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44">
+            <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 Models
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {MODEL_LINKS.map((link) => (
+              {ONLYFANS_MODEL_LINKS.map((link) => (
                 <DropdownMenuItem key={link.href} asChild>
                   <Link
                     href={link.href}
@@ -207,31 +205,12 @@ export function Navbar() {
                   </Link>
                 </DropdownMenuItem>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Posts Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors outline-none",
-                  isAnyActive(POST_LINKS)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                <IconFileText className="size-4" />
-                Posts
-                <IconChevronDown className="size-3 opacity-60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 Posts
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {POST_LINKS.map((link) => (
+              {ONLYFANS_POST_LINKS.map((link) => (
                 <DropdownMenuItem key={link.href} asChild>
                   <Link
                     href={link.href}
@@ -319,19 +298,6 @@ export function Navbar() {
               <IconDeviceTv className="size-4" />
               Library
             </Link>
-            <Link
-              href="/favorites"
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                pathname === "/favorites"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <IconHeart className="size-4" />
-              Favorites
-            </Link>
             <p className="px-3 pt-2 pb-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">
               Videos
             </p>
@@ -352,9 +318,12 @@ export function Navbar() {
               </Link>
             ))}
             <p className="px-3 pt-2 pb-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              OnlyFans
+            </p>
+            <p className="px-3 pt-1 pb-1 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
               Models
             </p>
-            {MODEL_LINKS.map((link) => (
+            {ONLYFANS_MODEL_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -370,10 +339,10 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <p className="px-3 pt-2 pb-1 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+            <p className="px-3 pt-2 pb-1 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
               Posts
             </p>
-            {POST_LINKS.map((link) => (
+            {ONLYFANS_POST_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

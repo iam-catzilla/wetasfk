@@ -10,7 +10,14 @@ async function fetchSxyprn(path: string): Promise<string> {
   if (!res.ok) {
     throw new Error(`Codetabs proxy error: ${res.status}`)
   }
-  return res.text()
+  const html = await res.text()
+  if (
+    html.includes("<title>Just a moment...</title>") ||
+    html.includes("challenge-platform")
+  ) {
+    throw new Error("SxyPrn challenge page")
+  }
+  return html
 }
 
 export async function GET(
@@ -25,29 +32,29 @@ export async function GET(
     // ─── /api/sxyprn/search ──────────────────────────
     if (joined === "search") {
       const query = sp.get("q") || ""
-      const page = parseInt(sp.get("page") || "0", 10)
+      const page = parseInt(sp.get("page") || "1", 10)
       const mode = sp.get("mode") || "trending"
 
       let sxyprnPath: string
       if (query) {
         // Search by keyword — sxyprn uses /{keyword}.html?sm=trending
         const safeQuery = query.replace(/\s+/g, "-")
-        sxyprnPath = `/${encodeURIComponent(safeQuery)}.html?sm=${mode}&p=${page}`
+        sxyprnPath = `/${encodeURIComponent(safeQuery)}.html?sm=${mode}&p=${Math.max(1, page)}`
       } else {
         // Browse modes
         switch (mode) {
           case "top-viewed":
-            sxyprnPath = `/popular/top-viewed.html?p=${page}`
+            sxyprnPath = `/popular/top-viewed.html?p=${Math.max(1, page)}`
             break
           case "top-rated":
-            sxyprnPath = `/popular/top-pop.html?p=${page}`
+            sxyprnPath = `/popular/top-pop.html?p=${Math.max(1, page)}`
             break
           case "latest":
-            sxyprnPath = `/blog/all/${page}.html`
+            sxyprnPath = `/blog/all/${Math.max(1, page)}.html`
             break
           case "trending":
           default:
-            sxyprnPath = page === 0 ? "/" : `/?p=${page}`
+            sxyprnPath = page <= 1 ? "/" : `/?p=${page}`
             break
         }
       }

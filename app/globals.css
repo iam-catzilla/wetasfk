@@ -5,6 +5,17 @@
 
 @custom-variant dark (&:is(.dark *, .catppuccin *, .nord *, .ayu-dark *, .tokyo-night *, .dracula *, .gruvbox-dark-soft *, .gruvbox-dark-hard *, .horizon *, .synthwave-84 *, .rose-pine *, .kanagawa *));
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ─── Plyr theme overrides ─────────────────────────────── */
 .plyr-container {
   --plyr-color-main: var(--primary);

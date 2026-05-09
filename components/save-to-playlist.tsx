@@ -43,7 +43,7 @@ export function SaveToPlaylistDialog({
         title: videoTitle,
         thumb: videoThumb,
         duration: videoDuration,
-        addedAt: Date.now(),
+        addedAt: 0,
       })
     }
   }
@@ -57,7 +57,7 @@ export function SaveToPlaylistDialog({
       title: videoTitle,
       thumb: videoThumb,
       duration: videoDuration,
-      addedAt: Date.now(),
+      addedAt: 0,
     })
     setNewName("")
     setCreating(false)

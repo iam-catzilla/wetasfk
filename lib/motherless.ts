@@ -119,6 +119,13 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
 
     // __fileurl for highest quality
     const fileUrlMatch = html.match(/__fileurl\s*=\s*'([^']+)'/)
+    const downloadUrl =
+      fileUrlMatch?.[1] ||
+      sources
+        .slice()
+        .sort(
+          (left, right) => parseInt(right.res, 10) - parseInt(left.res, 10)
+        )[0]?.url
 
     const embedUrl = `/api/motherless/player/${id}`
 
@@ -159,6 +166,7 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
       tags,
       url: `https://motherless.com/${id}`,
       embedUrl,
+      downloadUrl,
       added,
     }
   } catch {

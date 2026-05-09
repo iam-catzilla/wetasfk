@@ -27,10 +27,10 @@ export function PostCard({ post }: PostCardProps) {
   if (mainFile) {
     if (isImage(mainFile)) {
       thumbnailType = "image"
-      thumbnailUrl = api.getMediaUrl(mainFile, source)
+      thumbnailUrl = api.getMediaUrl(mainFile, source, post.file?.server)
     } else if (isVideo(mainFile)) {
       thumbnailType = "video"
-      thumbnailUrl = api.getMediaUrl(mainFile, source)
+      thumbnailUrl = api.getMediaUrl(mainFile, source, post.file?.server)
     }
   }
 
@@ -38,12 +38,16 @@ export function PostCard({ post }: PostCardProps) {
     const firstImage = attachments.find((att) => isImage(att.path))
     if (firstImage) {
       thumbnailType = "image"
-      thumbnailUrl = api.getMediaUrl(firstImage.path, source)
+      thumbnailUrl = api.getMediaUrl(firstImage.path, source, firstImage.server)
     } else {
       const firstVideo = attachments.find((att) => isVideo(att.path))
       if (firstVideo) {
         thumbnailType = "video"
-        thumbnailUrl = api.getMediaUrl(firstVideo.path, source)
+        thumbnailUrl = api.getMediaUrl(
+          firstVideo.path,
+          source,
+          firstVideo.server
+        )
       }
     }
   }

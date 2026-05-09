@@ -63,6 +63,18 @@ export async function GET(
       const query = sp.get("q") || ""
       const page = parseInt(sp.get("page") || "1", 10)
 
+      if (!query && page > 1) {
+        return NextResponse.json(
+          { videos: [], page, hasMore: false },
+          {
+            headers: {
+              "Cache-Control":
+                "public, s-maxage=300, stale-while-revalidate=600",
+            },
+          }
+        )
+      }
+
       let html: string
       if (query) {
         // Try direct AJAX search first (works without ISP blocking)

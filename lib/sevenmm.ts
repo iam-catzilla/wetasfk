@@ -224,19 +224,47 @@ export async function get7mmtvVideo(id: string): Promise<ScrapedVideo | null> {
 // ─── Direct server-side fetch (bypasses self-referential HTTP on Vercel) ──────
 // Server-side has no CORS restrictions — fetch the site directly.
 
+const SEVENMM_BASE_DIRECT = "https://7mmtv.sx"
+const SEVENMM_PROXY_URL = "https://api.codetabs.com/v1/proxy/?quest="
+
+function isBlockedSevenMmPage(html: string): boolean {
+  return /just a moment|cf-browser-verification|attention required/i.test(html)
+}
+
 async function fetch7mmDirect(path: string): Promise<string> {
-  const res = await fetch(`https://7mmtv.sx${path}`, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      Referer: "https://7mmtv.sx/",
-    },
-    next: { revalidate: 300 },
-  })
-  if (!res.ok) throw new Error(`7mmtv fetch error: ${res.status}`)
-  return res.text()
+  const target = `${SEVENMM_BASE_DIRECT}${path}`
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    Referer: `${SEVENMM_BASE_DIRECT}/`,
+  }
+
+  try {
+    const res = await fetch(target, {
+      headers,
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) throw new Error(`7mmtv fetch error: ${res.status}`)
+
+    const html = await res.text()
+    if (isBlockedSevenMmPage(html)) {
+      throw new Error("7mmtv returned a challenge page")
+    }
+
+    return html
+  } catch {
+    const proxied = await fetch(
+      `${SEVENMM_PROXY_URL}${encodeURIComponent(target)}`,
+      {
+        headers,
+        next: { revalidate: 300 },
+      }
+    )
+    if (!proxied.ok) throw new Error(`7mmtv proxy error: ${proxied.status}`)
+    return proxied.text()
+  }
 }
 
 export async function search7mmtvDirect(

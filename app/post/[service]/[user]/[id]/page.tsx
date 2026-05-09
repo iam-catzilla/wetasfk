@@ -78,7 +78,7 @@ export default function PostPage() {
 
   const postSource = api.getSourceFromService(post.service)
   const mediaUrl = post.file?.path
-    ? api.getMediaUrl(post.file.path, postSource)
+    ? api.getMediaUrl(post.file.path, postSource, post.file.server)
     : null
   const iconUrl = api.getIconUrl(post.service, post.user, postSource)
 
@@ -162,7 +162,11 @@ export default function PostPage() {
                 </h3>
                 <div className="flex flex-col gap-6">
                   {post.attachments.map((att, i) => {
-                    const attUrl = api.getMediaUrl(att.path, postSource)
+                    const attUrl = api.getMediaUrl(
+                      att.path,
+                      postSource,
+                      att.server
+                    )
                     const isVideo = att.path.match(/\.(mp4|webm|mov)$/i)
 
                     return (

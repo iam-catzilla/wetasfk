@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next"
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wetasfk.com"
+import { SITE_URL } from "@/lib/site"
 
 // Commonly searched adult content categories / tags for deep-link SEO
 const POPULAR_TAGS = [

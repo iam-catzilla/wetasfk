@@ -207,6 +207,14 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
           .filter(Boolean)
       : []
 
+    const performers: string[] = []
+    for (const m of html.matchAll(
+      /href="https?:\/\/(?:www\.)?xnxx\.com\/(?:pornstars?|models?)\/([^/"?#]+)\/?"/g
+    )) {
+      const name = decodeHtml(decodeURIComponent(m[1].replace(/[-_]+/g, " ")))
+      if (name) performers.push(name)
+    }
+
     // Numeric ID for embed URL — from inline JSON or setVideoURL
     const numericIdMatch =
       html.match(/"id"\s*:\s*(\d{5,})/) || html.match(/video_id\s*=\s*(\d+)/)
@@ -222,6 +230,7 @@ export function parseVideoPage(html: string, id: string): ScrapedVideo | null {
       rating,
       quality,
       tags,
+      performers: [...new Set(performers)],
       url: `/${id.replace(/~/g, "/")}`,
       embedUrl: id ? `/api/xnxx/player/${id}` : "",
       added: "",

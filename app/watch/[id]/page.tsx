@@ -1,15 +1,94 @@
-import { unifiedGetVideo, unifiedSearch, formatViews } from "@/lib/videos"
+import { formatViews } from "@/lib/videos"
+import { unifiedGetVideo, unifiedSearch } from "@/lib/server-video-data"
 import { resolveHandler } from "@/lib/source-registry"
-import { VideoGrid } from "@/components/video-grid"
+import { performerSlug } from "@/lib/performers"
 import { WatchPageClient, WatchPageActions } from "./watch-client"
 import { PlaylistQueue } from "@/components/playlist-queue"
 import { notFound } from "next/navigation"
 import { IconEye, IconStar, IconClock, IconCalendar } from "@tabler/icons-react"
 import Link from "next/link"
+import type { Metadata } from "next"
+import { SITE_NAME, SITE_URL } from "@/lib/site"
 
 interface Props {
   params: Promise<{ id: string }>
   searchParams: Promise<{ playlist?: string }>
+}
+
+function toIsoDuration(durationSec: number): string | undefined {
+  if (!durationSec) {
+    return undefined
+  }
+
+  const hours = Math.floor(durationSec / 3600)
+  const minutes = Math.floor((durationSec % 3600) / 60)
+  const seconds = durationSec % 60
+  const parts = ["PT"]
+
+  if (hours) parts.push(`${hours}H`)
+  if (minutes) parts.push(`${minutes}M`)
+  if (seconds || parts.length === 1) parts.push(`${seconds}S`)
+
+  return parts.join("")
+}
+
+function absoluteUrl(path: string): string {
+  if (!path) {
+    return SITE_URL
+  }
+
+  if (/^https?:\/\//.test(path)) {
+    return path
+  }
+
+  return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params
+  const video = await unifiedGetVideo(id)
+
+  if (!video) {
+    return {
+      title: "Video not found",
+      robots: { index: false, follow: false },
+    }
+  }
+
+  const canonical = `/watch/${id}`
+  const description = [
+    `Watch ${video.title} on ${SITE_NAME}.`,
+    video.durationStr ? `Duration: ${video.durationStr}.` : null,
+    video.keywords ? `Tags: ${video.keywords}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
+
+  return {
+    title: video.title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title: video.title,
+      description,
+      url: canonical,
+      type: "video.other",
+      images: [
+        {
+          url: `${canonical}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: video.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: video.title,
+      description,
+      images: [`${canonical}/opengraph-image`],
+    },
+  }
 }
 
 export default async function WatchPage({ params, searchParams }: Props) {
@@ -37,8 +116,40 @@ export default async function WatchPage({ params, searchParams }: Props) {
       ]
     : []
 
+  const performers = video.performers || []
+
+  const videoJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: video.title,
+    description: keywords.length
+      ? `${video.title}. Tags: ${keywords.join(", ")}.`
+      : video.title,
+    thumbnailUrl: video.thumb ? [absoluteUrl(video.thumb)] : undefined,
+    duration: toIsoDuration(video.durationSec),
+    embedUrl: absoluteUrl(video.embedUrl),
+    url: `${SITE_URL}/watch/${video.id}`,
+    genre: keywords,
+    actor: performers.length
+      ? performers.map((name) => ({
+          "@type": "Person",
+          name,
+        }))
+      : undefined,
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+  }
+
   return (
     <div className="flex flex-col gap-8 lg:flex-row">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
+      />
+
       {/* Main Content */}
       <div className="flex min-w-0 flex-1 flex-col gap-6">
         {/* Player */}
@@ -88,6 +199,25 @@ export default async function WatchPage({ params, searchParams }: Props) {
               </Link>
             ))}
           </div>
+
+          {performers.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
+                In This Video
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {performers.map((performer) => (
+                  <Link
+                    key={performer}
+                    href={`/actors/${performerSlug(performer)}`}
+                    className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/15"
+                  >
+                    {performer}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

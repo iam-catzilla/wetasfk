@@ -18,6 +18,16 @@ import {
   getHqpornerVideoDirect,
 } from "./hqporner"
 import {
+  browsePorntrexDirect,
+  searchPorntrexDirect,
+  getPorntrexVideoDirect,
+} from "./porntrex"
+import {
+  browseRedtubeDirect,
+  searchRedtubeDirect,
+  getRedtubeVideoDirect,
+} from "./redtube"
+import {
   browseMotherlessDirect,
   searchMotherlessDirect,
   getMotherlessVideoDirect,
@@ -46,6 +56,7 @@ function epornerToUnified(v: import("./types").EpornerVideo): UnifiedVideo {
     source: "eporner",
     title: v.title,
     keywords: v.keywords,
+    performers: [],
     views: v.views,
     rating: v.rate,
     url: v.url,
@@ -53,6 +64,7 @@ function epornerToUnified(v: import("./types").EpornerVideo): UnifiedVideo {
     durationSec: v.length_sec,
     durationStr: v.length_min,
     embedUrl: v.embed,
+    downloadUrl: undefined,
     thumb: v.default_thumb?.src || v.thumbs?.[0]?.src || "",
     thumbs: v.thumbs?.map((t) => t.src) || [],
     quality: v.default_thumb?.width >= 640 ? "HD" : undefined,
@@ -85,11 +97,13 @@ function toEmbedUrl(url: string): string {
 
 function sxyprnToUnified(v: import("./types").SxyprnVideo): UnifiedVideo {
   let embedUrl = ""
+  let downloadUrl = ""
   if (v.externalLinks.length > 0) {
     embedUrl = toEmbedUrl(v.externalLinks[0])
   } else if (v.cdnVideoPath) {
     const cdnFull = `https://sxyprn.com${v.cdnVideoPath}`
     embedUrl = `/api/sxyprn/stream?url=${encodeURIComponent(cdnFull)}`
+    downloadUrl = embedUrl
   }
 
   return {
@@ -97,6 +111,9 @@ function sxyprnToUnified(v: import("./types").SxyprnVideo): UnifiedVideo {
     source: "sxyporn",
     title: v.title,
     keywords: v.tags.join(", "),
+    performers: [
+      ...new Set(v.stars.map((star) => star.trim()).filter(Boolean)),
+    ],
     views: v.views,
     rating: "",
     url: `https://sxyprn.com/post/${v.id}.html`,
@@ -104,6 +121,8 @@ function sxyprnToUnified(v: import("./types").SxyprnVideo): UnifiedVideo {
     durationSec: v.durationSec,
     durationStr: v.duration,
     embedUrl,
+    downloadUrl: downloadUrl || undefined,
+    previewUrl: v.previewVideo || downloadUrl || undefined,
     thumb: v.thumb,
     thumbs: [v.thumb],
     quality: v.quality || undefined,
@@ -116,6 +135,11 @@ function scrapedToUnified(v: ScrapedVideo, source: VideoSource): UnifiedVideo {
     source,
     title: v.title,
     keywords: v.tags.join(", "),
+    performers: [
+      ...new Set(
+        (v.performers || []).map((name) => name.trim()).filter(Boolean)
+      ),
+    ],
     views: v.views,
     rating: v.rating,
     url: v.url,
@@ -123,6 +147,8 @@ function scrapedToUnified(v: ScrapedVideo, source: VideoSource): UnifiedVideo {
     durationSec: v.durationSec,
     durationStr: v.duration,
     embedUrl: v.embedUrl,
+    downloadUrl: v.downloadUrl,
+    previewUrl: v.previewUrl,
     thumb: v.thumb,
     thumbs: [v.thumb],
     quality: v.quality || undefined,
@@ -157,6 +183,8 @@ interface SourceHandler {
   getVideo: (realId: string) => Promise<UnifiedVideo | null>
 }
 
+const UNKNOWN_SCRAPED_TOTAL_PAGES = 24
+
 function scrapedResponse(
   videos: UnifiedVideo[],
   hasMore: boolean,
@@ -165,8 +193,10 @@ function scrapedResponse(
 ): UnifiedSearchResponse {
   return {
     videos,
-    totalCount: hasMore ? (page + 1) * perPage : page * videos.length,
-    totalPages: hasMore ? page + 1 : page,
+    totalCount: hasMore
+      ? UNKNOWN_SCRAPED_TOTAL_PAGES * perPage
+      : (page - 1) * perPage + videos.length,
+    totalPages: hasMore ? UNKNOWN_SCRAPED_TOTAL_PAGES : page,
     page,
     perPage,
   }
@@ -196,10 +226,9 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
     search: async (params) => {
       const page = params.page || 1
       const perPage = params.per_page || 36
-      const sxyprnPage = page - 1
       const data = await searchSxyprnQueryDirect(
         params.query || "",
-        sxyprnPage,
+        page,
         sortToSxyprnMode(params.order || "top-weekly")
       )
       return scrapedResponse(
@@ -258,6 +287,48 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
     },
   },
 
+  porntrex: {
+    idPrefix: "porntrex-",
+    search: async (params) => {
+      const page = params.page || 1
+      const perPage = params.per_page || 36
+      const data = params.query
+        ? await searchPorntrexDirect(params.query, page)
+        : await browsePorntrexDirect(page)
+      return scrapedResponse(
+        data.videos.map((v) => scrapedToUnified(v, "porntrex")),
+        data.hasMore,
+        page,
+        perPage
+      )
+    },
+    getVideo: async (id) => {
+      const v = await getPorntrexVideoDirect(id)
+      return v ? scrapedToUnified(v, "porntrex") : null
+    },
+  },
+
+  redtube: {
+    idPrefix: "redtube-",
+    search: async (params) => {
+      const page = params.page || 1
+      const perPage = params.per_page || 36
+      const data = params.query
+        ? await searchRedtubeDirect(params.query, page)
+        : await browseRedtubeDirect(page)
+      return scrapedResponse(
+        data.videos.map((v) => scrapedToUnified(v, "redtube")),
+        data.hasMore,
+        page,
+        perPage
+      )
+    },
+    getVideo: async (id) => {
+      const v = await getRedtubeVideoDirect(id)
+      return v ? scrapedToUnified(v, "redtube") : null
+    },
+  },
+
   motherless: {
     idPrefix: "motherless-",
     search: async (params) => {
@@ -287,12 +358,19 @@ export const SOURCE_HANDLERS: Record<VideoSource, SourceHandler> = {
       const data = params.query
         ? await searchPornhoarderDirect(params.query, page)
         : await browsePornhoarderDirect(page)
-      return scrapedResponse(
-        data.videos.map((v) => scrapedToUnified(v, "pornhoarder")),
-        data.hasMore,
-        page,
-        perPage
-      )
+      const videos = data.videos.map((v) => scrapedToUnified(v, "pornhoarder"))
+
+      if (!params.query) {
+        return {
+          videos,
+          totalCount: page === 1 ? videos.length : 0,
+          totalPages: 1,
+          page,
+          perPage,
+        }
+      }
+
+      return scrapedResponse(videos, data.hasMore, page, perPage)
     },
     getVideo: async (id) => {
       const v = await getPornhoarderVideoDirect(id)

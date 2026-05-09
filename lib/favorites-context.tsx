@@ -20,22 +20,26 @@ export const FavoritesContext = createContext<FavoritesContextType | undefined>(
   undefined
 )
 
-export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const [favorites, setFavorites] = useState<Creator[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
+function readStoredFavorites(): Creator[] {
+  if (typeof window === "undefined") {
+    return []
+  }
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("favorites")
-    if (stored) {
-      try {
-        setFavorites(JSON.parse(stored))
-      } catch (e) {
-        console.error("Failed to parse favorites", e)
-      }
-    }
-    setIsLoaded(true)
-  }, [])
+  const stored = localStorage.getItem("favorites")
+  if (!stored) {
+    return []
+  }
+
+  try {
+    return JSON.parse(stored)
+  } catch (error) {
+    console.error("Failed to parse favorites", error)
+    return []
+  }
+}
+
+export function FavoritesProvider({ children }: { children: React.ReactNode }) {
+  const [favorites, setFavorites] = useState<Creator[]>(readStoredFavorites)
 
   // Listen for changes from other tabs
   useEffect(() => {
@@ -55,10 +59,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   // Sync with localStorage whenever favorites change
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("favorites", JSON.stringify(favorites))
-    }
-  }, [favorites, isLoaded])
+    localStorage.setItem("favorites", JSON.stringify(favorites))
+  }, [favorites])
 
   const toggleFavorite = useCallback((creator: Creator) => {
     setFavorites((prev) => {

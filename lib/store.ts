@@ -139,7 +139,13 @@ export const useAppStore = create<AppStore>()(
             if (p.items.some((i) => i.id === item.id)) return p
             return {
               ...p,
-              items: [...p.items, item],
+              items: [
+                ...p.items,
+                {
+                  ...item,
+                  addedAt: item.addedAt || Date.now(),
+                },
+              ],
               updatedAt: Date.now(),
             }
           }),

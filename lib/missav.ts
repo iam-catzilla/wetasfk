@@ -141,6 +141,14 @@ export function parseVideoPage(
     const tags: string[] = []
     for (const m of tagMatches) tags.push(m[1].trim())
 
+    const performers: string[] = []
+    for (const m of html.matchAll(
+      /href="https?:\/\/(?:www\.)?missav\.(?:ws|ai)\/(?:en\/)?(?:actress|actresses|pornstar|star)\/([^/"?#]+)\/?"/g
+    )) {
+      const name = decodeHtml(decodeURIComponent(m[1].replace(/[-_]+/g, " ")))
+      if (name) performers.push(name)
+    }
+
     return {
       id: code,
       title,
@@ -151,6 +159,7 @@ export function parseVideoPage(
       rating: "",
       quality: "",
       tags,
+      performers: [...new Set(performers)],
       url: `${MISSAV_BASE}/en/${code}`,
       embedUrl: `/api/missav/player/${code}`,
       added: "",

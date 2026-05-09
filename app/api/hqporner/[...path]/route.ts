@@ -72,27 +72,18 @@ export async function GET(
 
     // ─── /api/hqporner/video/:id ─────────────────────
     if (joined.startsWith("video/")) {
-      const id = path[1]
-      if (!id || !/^\d+$/.test(id)) {
+      const rawId = path[1]
+      const [numericId, slug = ""] = (rawId || "").split("~")
+      if (!numericId || !/^\d+$/.test(numericId)) {
         return NextResponse.json({ error: "Invalid video ID" }, { status: 400 })
       }
 
-      // We need the full slug to fetch the page. Try to find it.
-      // First try to get the video page HTML by searching for the ID
-      const searchHtml = await fetchHQ(`/?q=${id}`)
-      const linkMatch = searchHtml.match(
-        new RegExp(`href="(/hdporn/${id}-[^"]+\\.html)"`)
-      )
+      const hqPath = slug
+        ? `/hdporn/${numericId}-${slug}.html`
+        : `/hdporn/${numericId}.html`
+      const html = await fetchHQ(hqPath)
 
-      let html: string
-      if (linkMatch) {
-        html = await fetchHQ(linkMatch[1])
-      } else {
-        // Try direct path with just the ID
-        html = await fetchHQ(`/hdporn/${id}.html`)
-      }
-
-      const video = parseVideoPage(html, id)
+      const video = parseVideoPage(html, rawId)
 
       if (!video) {
         return NextResponse.json({ error: "Video not found" }, { status: 404 })

@@ -121,6 +121,14 @@ function parseVideoPage(html: string, id: string): ScrapedVideo | null {
     const tags: string[] = []
     for (const m of tagMatches) tags.push(m[1].trim())
 
+    const performers: string[] = []
+    for (const m of html.matchAll(
+      /href="https?:\/\/supjav\.com\/(?:actress|actresses|pornstar|star)\/([^/"?#]+)\/?"/g
+    )) {
+      const name = decodeHtml(decodeURIComponent(m[1].replace(/[-_]+/g, " ")))
+      if (name) performers.push(name)
+    }
+
     return {
       id,
       title,
@@ -131,6 +139,7 @@ function parseVideoPage(html: string, id: string): ScrapedVideo | null {
       rating: "",
       quality: "",
       tags,
+      performers: [...new Set(performers)],
       url: `${SUPJAV_BASE}/${id}.html`,
       embedUrl: `/api/supjav/player/${id}`,
       added: "",

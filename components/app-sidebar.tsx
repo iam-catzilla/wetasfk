@@ -20,7 +20,6 @@ import {
   IconPlayerPlay,
   IconClock,
   IconBook,
-  IconStar,
 } from "@tabler/icons-react"
 
 import {
@@ -174,16 +173,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <Link href="/favorites" className="flex items-center gap-2">
+                <Link
+                  href="/library/liked-videos"
+                  className="flex items-center gap-2"
+                >
                   <SidebarMenuButton
                     className={cn(
                       "transition-all duration-200",
-                      isActive("/favorites") &&
+                      isActive("/library/liked-videos") &&
                         "bg-primary text-primary-foreground hover:bg-primary/90"
                     )}
                   >
-                    <IconStar className="h-4 w-4" />
-                    <span>Favorites</span>
+                    <IconHeart className="h-4 w-4" />
+                    <span>Liked Videos</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>

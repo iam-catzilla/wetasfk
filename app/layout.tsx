@@ -9,8 +9,11 @@ import { SourceSync } from "@/components/source-sync"
 import { SourceProvider } from "@/lib/source-context"
 import { FavoritesProvider } from "@/lib/favorites-context"
 import { GlobalContextMenu } from "@/components/global-context-menu"
+import { ServiceWorkerRegister } from "@/components/service-worker-register"
+import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 import type { Metadata } from "next"
+import { SITE_NAME, SITE_URL } from "@/lib/site"
 
 const manropeHeading = Manrope({
   subsets: ["latin"],
@@ -24,11 +27,9 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wetasfk.com"
-const SITE_NAME = "Wetasfk"
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  manifest: "/site.webmanifest",
   title: {
     default: "Wetasfk – Free HD Adult Videos, OnlyFans & Creator Content",
     template: "%s | Wetasfk",
@@ -219,11 +220,13 @@ export default function RootLayout({
           <GlobalContextMenu>
             <SourceProvider>
               <FavoritesProvider>
+                <ServiceWorkerRegister />
                 <Navbar />
                 <Suspense>
                   <SourceSync />
                 </Suspense>
                 <main className="px-3 py-6 md:px-6">{children}</main>
+                <Toaster richColors />
               </FavoritesProvider>
             </SourceProvider>
           </GlobalContextMenu>

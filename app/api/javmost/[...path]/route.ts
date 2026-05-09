@@ -1,8 +1,236 @@
+import https from "node:https"
 import { NextRequest, NextResponse } from "next/server"
 import { parseListHtml, parseVideoPage } from "@/lib/javmost"
 
+export const runtime = "nodejs"
+
 const JAVMOST_BASE = "https://www.javmost.ws"
 const PROXY_URL = "https://api.codetabs.com/v1/proxy/?quest="
+const MOSTPLAYER_URL_RE = /https?:\/\/(?:www\.)?mostplayer\.com\/embed\/e\//i
+
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+} as const
+
+function normalizeExternalUrl(url: string): string {
+  return url.startsWith("//") ? `https:${url}` : url
+}
+
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+function isDirectMediaUrl(url: string): boolean {
+  return /^https?:\/\/[^\s]+\.(?:mp4|m3u8)(?:\?|$)/i.test(url)
+}
+
+function readMetaContent(html: string, name: string): string | null {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const patterns = [
+    new RegExp(
+      `<meta[^>]+name=(?:["'])?${escapedName}(?:["'])?[^>]+content=(?:["'])?([^"'\\s>]+)(?:["'])?[^>]*>`,
+      "i"
+    ),
+    new RegExp(
+      `<meta[^>]+content=(?:["'])?([^"'\\s>]+)(?:["'])?[^>]+name=(?:["'])?${escapedName}(?:["'])?[^>]*>`,
+      "i"
+    ),
+  ]
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern)
+    if (match?.[1]) {
+      return match[1]
+    }
+  }
+
+  return null
+}
+
+async function requestText(
+  url: string,
+  init: {
+    method?: "GET" | "POST"
+    headers?: Record<string, string>
+    body?: string
+  } = {}
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      url,
+      {
+        method: init.method || "GET",
+        headers: init.headers,
+      },
+      (res) => {
+        let body = ""
+        res.setEncoding("utf8")
+        res.on("data", (chunk) => {
+          body += chunk
+        })
+        res.on("end", () => {
+          resolve({ status: res.statusCode || 0, body })
+        })
+      }
+    )
+
+    req.on("error", reject)
+
+    if (init.body) {
+      req.write(init.body)
+    }
+
+    req.end()
+  })
+}
+
+function renderIframePage(url: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden}
+  iframe{width:100%;height:100%;border:0;display:block}
+</style>
+</head>
+<body>
+<iframe src="${escapeHtmlAttr(url)}" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+</body>
+</html>`
+}
+
+function renderDirectPlayerPage(url: string): string {
+  const isHls = /\.m3u8(?:\?|$)/i.test(url)
+  const serializedUrl = JSON.stringify(url)
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden}
+  body{display:flex}
+  video{width:100%;height:100%;display:block;background:#000}
+  .error{margin:auto;padding:16px;color:#fff;font:14px/1.4 system-ui,sans-serif;text-align:center}
+</style>
+</head>
+<body>
+<video id="player" controls playsinline preload="metadata" crossorigin="anonymous"></video>
+${
+  isHls
+    ? '<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.6.7/hls.min.js"></script>'
+    : ""
+}
+<script>
+  const video = document.getElementById("player");
+  const mediaUrl = ${serializedUrl};
+
+  function showError() {
+    document.body.innerHTML = '<div class="error">Unable to load this video source.</div>';
+  }
+
+  if (${isHls ? "true" : "false"}) {
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = mediaUrl;
+    } else if (window.Hls && window.Hls.isSupported()) {
+      let mediaRecoveryAttempts = 0;
+      let hasStartedLoad = false;
+      const startLoad = () => {
+        if (hasStartedLoad) return;
+        hasStartedLoad = true;
+        hls.startLoad();
+      };
+      const hls = new window.Hls({ enableWorker: false, autoStartLoad: false });
+      hls.loadSource(mediaUrl);
+      hls.attachMedia(video);
+      video.addEventListener("play", startLoad, { once: true });
+      hls.on(window.Hls.Events.ERROR, (_, data) => {
+        if (data && data.fatal) {
+          if (data.type === 'mediaError' && mediaRecoveryAttempts < 2) {
+            mediaRecoveryAttempts += 1;
+            hls.recoverMediaError();
+            return;
+          }
+
+          console.error("[JavMost] HLS fatal error", data);
+          showError();
+        }
+      });
+    } else {
+      showError();
+    }
+  } else {
+    video.src = mediaUrl;
+  }
+</script>
+</body>
+</html>`
+}
+
+async function resolveMostPlayerStream(
+  embedUrl: string,
+  pageUrl: string
+): Promise<string | null> {
+  const embedResponse = await requestText(embedUrl, {
+    headers: {
+      ...BROWSER_HEADERS,
+      Referer: pageUrl,
+      "Sec-Fetch-Dest": "iframe",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "cross-site",
+    },
+  })
+
+  if (embedResponse.status < 200 || embedResponse.status >= 300) {
+    throw new Error(`MostPlayer embed fetch failed: ${embedResponse.status}`)
+  }
+
+  const embedHtml = embedResponse.body
+  const token = readMetaContent(embedHtml, "x-embed-token")
+  const api = readMetaContent(embedHtml, "x-embed-api")
+  const et = readMetaContent(embedHtml, "x-embed-et")
+  const sig = readMetaContent(embedHtml, "x-embed-sig")
+
+  if (!token || !api || !et || !sig) {
+    return null
+  }
+
+  const requestBody = JSON.stringify({ ref: new URL(embedUrl).origin })
+  const apiResponse = await requestText(`${api}${token}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/plain, */*",
+      "Content-Length": String(Buffer.byteLength(requestBody)),
+      "User-Agent": BROWSER_HEADERS["User-Agent"],
+      Referer: embedUrl,
+      Origin: new URL(embedUrl).origin,
+      "x-embed-auth": "1",
+      "x-embed-et": et,
+      "x-embed-sig": sig,
+    },
+    body: requestBody,
+  })
+
+  if (apiResponse.status < 200 || apiResponse.status >= 300) {
+    throw new Error(`MostPlayer stream API failed: ${apiResponse.status}`)
+  }
+
+  const data = JSON.parse(apiResponse.body) as { ok?: boolean; url?: string }
+  return data.ok && data.url ? normalizeExternalUrl(data.url) : null
+}
 
 async function fetchJM(url: string): Promise<string> {
   const res = await fetch(`${PROXY_URL}${encodeURIComponent(url)}`, {
@@ -122,8 +350,8 @@ export async function GET(
         return new NextResponse("Invalid code", { status: 400 })
       }
 
-      const url = `${JAVMOST_BASE}/${code}/`
-      const pageHtml = await fetchJM(url)
+      const pageUrl = `${JAVMOST_BASE}/${code}/`
+      const pageHtml = await fetchJM(pageUrl)
 
       // ── 1. Extract JS variables and resolve video URL server-side ──
       // JavMost loads videos via AJAX (select_part → POST to /ri3123o235r/)
@@ -173,7 +401,7 @@ export async function GET(
             const json = await postRes.json()
             if (json.status !== "error" && json.data?.[0]) {
               let u = json.data[0] as string
-              if (u.startsWith("//")) u = `https:${u}`
+              u = normalizeExternalUrl(u)
               embedUrl = u
             }
           }
@@ -189,13 +417,12 @@ export async function GET(
 
         const dataLink = pageHtml.match(/data-link="((?:https?:)?\/\/[^"]+)"/)
         if (dataLink) {
-          const u = dataLink[1]
-          embedUrl = u.startsWith("//") ? `https:${u}` : u
+          embedUrl = normalizeExternalUrl(dataLink[1])
         }
 
         if (!embedUrl) {
           for (const m of pageHtml.matchAll(/<iframe[^>]+src="([^"]+)"/gi)) {
-            const u = m[1].startsWith("//") ? `https:${m[1]}` : m[1]
+            const u = normalizeExternalUrl(m[1])
             if (knownHosts.test(u)) {
               embedUrl = u
               break
@@ -211,23 +438,29 @@ export async function GET(
         }
       }
 
+      let directMediaUrl = isDirectMediaUrl(embedUrl) ? embedUrl : ""
+
+      if (!directMediaUrl && MOSTPLAYER_URL_RE.test(embedUrl)) {
+        try {
+          directMediaUrl =
+            (await resolveMostPlayerStream(embedUrl, pageUrl)) || ""
+        } catch (error) {
+          console.error("[JavMost] Failed to resolve MostPlayer stream:", error)
+        }
+      }
+
+      if (directMediaUrl) {
+        return new NextResponse(renderDirectPlayerPage(directMediaUrl), {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "private, no-store",
+            "X-Frame-Options": "SAMEORIGIN",
+          },
+        })
+      }
+
       if (embedUrl) {
-        const playerHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100%;height:100%;background:#000;overflow:hidden}
-  iframe{width:100%;height:100%;border:0;display:block}
-</style>
-</head>
-<body>
-<iframe src="${embedUrl}" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
-</body>
-</html>`
-        return new NextResponse(playerHtml, {
+        return new NextResponse(renderIframePage(embedUrl), {
           headers: {
             "Content-Type": "text/html; charset=utf-8",
             "Cache-Control": "private, no-store",

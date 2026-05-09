@@ -4,6 +4,161 @@ import { parseListPage, parseVideoPage } from "@/lib/sevenmm"
 const BASE = "https://7mmtv.sx"
 const PROXY_URL = "https://api.codetabs.com/v1/proxy/?quest="
 
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+} as const
+
+interface PlayerCandidate {
+  encodedId: string
+  baseUrl: string
+}
+
+const KNOWN_PLAYER_HOSTS_RE =
+  /streamtape|tapewithadblock|streamwish|vidhide|dood|mixdrop|voe|upstream|upns\.live|emturbovid\.com|mmvh\d+\.com/i
+
+function scorePlayerCandidate(baseUrl: string): number {
+  if (
+    /streamtape\.com\/e\//i.test(baseUrl) ||
+    /tapewithadblock/i.test(baseUrl)
+  ) {
+    return 0
+  }
+
+  if (
+    /upns\.live|emturbovid\.com|mmvh\d+\.com|streamwish|vidhide|dood|mixdrop|voe|upstream/i.test(
+      baseUrl
+    )
+  ) {
+    return 1
+  }
+
+  if (/play\.php\?id=/i.test(baseUrl)) {
+    return 3
+  }
+
+  return 2
+}
+
+function extractPlayerCandidates(html: string): PlayerCandidate[] {
+  const candidates: PlayerCandidate[] = []
+
+  const entryRe =
+    /mvarr\[['"][^'"]+['"]\]\s*=\s*\[\[\s*'[^']*'\s*,\s*'([^']+)'\s*,\s*'[^']*'\s*,\s*'([^']+)'/g
+
+  for (const match of html.matchAll(entryRe)) {
+    const encodedId = match[1]
+    const rawBase = match[2]
+    const baseUrl = rawBase.startsWith("//") ? `https:${rawBase}` : rawBase
+
+    if (!encodedId || !baseUrl.startsWith("http")) {
+      continue
+    }
+
+    candidates.push({ encodedId, baseUrl })
+  }
+
+  return candidates.sort((left, right) => {
+    return (
+      scorePlayerCandidate(left.baseUrl) - scorePlayerCandidate(right.baseUrl)
+    )
+  })
+}
+
+function normalizeEmbeddedUrl(url: string): string {
+  return url.startsWith("//") ? `https:${url}` : url
+}
+
+function extractStructuredPlayerUrls(html: string): string[] {
+  const urls: string[] = []
+  const structuredUrlRe = /"(?:embedUrl|contentUrl)"\s*:\s*"([^"]+)"/g
+
+  for (const match of html.matchAll(structuredUrlRe)) {
+    const normalized = normalizeEmbeddedUrl(match[1].replace(/\\\//g, "/"))
+    if (KNOWN_PLAYER_HOSTS_RE.test(normalized) && !urls.includes(normalized)) {
+      urls.push(normalized)
+    }
+  }
+
+  return urls.sort(
+    (left, right) => scorePlayerCandidate(left) - scorePlayerCandidate(right)
+  )
+}
+
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+function renderIframePage(url: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden}
+  iframe{width:100%;height:100%;border:0;display:block}
+</style>
+</head>
+<body>
+<iframe src="${escapeHtmlAttr(url)}" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
+</body>
+</html>`
+}
+
+async function fetchEmbeddableHtml(
+  url: string,
+  referer: string
+): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      ...BROWSER_HEADERS,
+      Referer: referer,
+      "Sec-Fetch-Dest": "iframe",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "cross-site",
+    },
+    next: { revalidate: 300 },
+  })
+
+  if (!res.ok) {
+    throw new Error(`Player fetch failed: ${res.status}`)
+  }
+
+  return res.text()
+}
+
+function sanitizeEmbeddedHtml(html: string, sourceUrl: string): string {
+  const baseTag = `<base href="${escapeHtmlAttr(sourceUrl)}">`
+  const layoutStyle = `<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}
+  body{display:flex}
+  iframe,video{width:100%;height:100%;border:0;display:block;background:#000}
+</style>`
+
+  return html
+    .replace(
+      /<script[^>]+src=["'][^"']*static\.cloudflareinsights\.com\/beacon\.min\.js[^"']*["'][^>]*><\/script>/gi,
+      ""
+    )
+    .replace(
+      /<script[^>]+src=["'][^"']*\/cdn-cgi\/scripts\/[^"']*["'][^>]*><\/script>/gi,
+      ""
+    )
+    .replace(/\sdata-cf-beacon=("[^"]*"|'[^']*')/gi, "")
+    .replace(/<meta[^>]*x-frame-options[^>]*>/gi, "")
+    .replace(/<meta[^>]+http-equiv=["']content-security-policy["'][^>]*>/gi, "")
+    .replace(/<head(?![^>]*>)/i, "<head>")
+    .replace(/<\/head>/i, `${baseTag}${layoutStyle}</head>`)
+}
+
 async function fetch7mm(path: string): Promise<string> {
   const target = `${BASE}${path}`
   const res = await fetch(`${PROXY_URL}${encodeURIComponent(target)}`, {
@@ -145,6 +300,7 @@ export async function GET(
 
       // Find the video page URL from a list. Try each type.
       let pageHtml = ""
+      let pageUrl = ""
       for (const type of ["censored", "uncensored", "amateurjav"]) {
         try {
           const listHtml = await fetch7mm(`/en/${type}_list/all/1.html`)
@@ -154,6 +310,7 @@ export async function GET(
             )
           )
           if (match) {
+            pageUrl = match[1]
             pageHtml = await fetch7mm(new URL(match[1]).pathname)
             break
           }
@@ -166,47 +323,58 @@ export async function GET(
         return new NextResponse("Video not found", { status: 404 })
       }
 
-      // Try to extract embed URLs from the mvarr JS variable.
-      // 7mmtv structure: mvarr['Name'] = [['Name', 'baseUrl', 'videoId', 'quality']]
       const embedUrls: string[] = []
-      const mvarrRe = /mvarr\[['"][^'"]*['"]\]\s*=\s*\[\[([^\]]+)\]\]/g
-      for (const mv of pageHtml.matchAll(mvarrRe)) {
-        const parts = [...mv[1].matchAll(/['"]([^'"]*)['"]/g)].map((m) => m[1])
-        // parts[0]=name, parts[1]=baseUrl, parts[2]=videoId
-        if (parts.length >= 3 && parts[1].startsWith("http") && parts[2]) {
-          const base = parts[1].endsWith("/") ? parts[1] : parts[1] + "/"
-          embedUrls.push(base + parts[2])
+      for (const embedUrl of extractStructuredPlayerUrls(pageHtml)) {
+        if (!embedUrls.includes(embedUrl)) {
+          embedUrls.push(embedUrl)
+        }
+      }
+
+      for (const candidate of extractPlayerCandidates(pageHtml)) {
+        const embedUrl = `${candidate.baseUrl}${candidate.encodedId}`
+        if (!embedUrls.includes(embedUrl)) {
+          embedUrls.push(embedUrl)
         }
       }
 
       // Also look for direct iframe srcs pointing to known video hosts
-      const knownHosts =
-        /streamtape|streamwish|vidhide|dood|mixdrop|voe|upstream|tapewithadblock/
       for (const m of pageHtml.matchAll(/<iframe[^>]+src="([^"]+)"/gi)) {
-        if (knownHosts.test(m[1])) {
-          const u = m[1].startsWith("//") ? `https:${m[1]}` : m[1]
+        if (KNOWN_PLAYER_HOSTS_RE.test(m[1])) {
+          const u = normalizeEmbeddedUrl(m[1])
           if (!embedUrls.includes(u)) embedUrls.push(u)
         }
       }
 
       if (embedUrls.length > 0) {
-        // Serve a minimal player with the first embed URL
-        const playerHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100%;height:100%;background:#000;overflow:hidden}
-  iframe{width:100%;height:100%;border:0;display:block}
-</style>
-</head>
-<body>
-<iframe src="${embedUrls[0]}" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="no-referrer"></iframe>
-</body>
-</html>`
-        return new NextResponse(playerHtml, {
+        const primaryEmbedUrl = embedUrls[0]
+
+        if (/play\.php\?id=/i.test(primaryEmbedUrl)) {
+          try {
+            const remotePlayerHtml = await fetchEmbeddableHtml(
+              primaryEmbedUrl,
+              pageUrl || `${BASE}/`
+            )
+
+            if (
+              /(?:<video\b|<iframe\b|jwplayer|hls|plyr)/i.test(remotePlayerHtml)
+            ) {
+              return new NextResponse(
+                sanitizeEmbeddedHtml(remotePlayerHtml, primaryEmbedUrl),
+                {
+                  headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "private, no-store",
+                    "X-Frame-Options": "SAMEORIGIN",
+                  },
+                }
+              )
+            }
+          } catch (error) {
+            console.warn("[7mmtv Proxy] Failed to proxy play.php page:", error)
+          }
+        }
+
+        return new NextResponse(renderIframePage(primaryEmbedUrl), {
           headers: {
             "Content-Type": "text/html; charset=utf-8",
             "Cache-Control": "private, no-store",

@@ -11,6 +11,13 @@ function decodeHtml(html: string): string {
     .replace(/\\\//g, "/")
 }
 
+function proxyJavmostThumb(url: string): string {
+  if (!url) return ""
+
+  const normalized = url.startsWith("//") ? `https:${url}` : url
+  return `/api/img?url=${encodeURIComponent(normalized)}`
+}
+
 // ─── Parse JavMost AJAX response HTML ────────────────────
 
 export function parseListHtml(html: string): ScrapedVideo[] {
@@ -37,11 +44,11 @@ export function parseListHtml(html: string): ScrapedVideo[] {
       if (!code || code === "page" || code === "search" || code === "category")
         continue
 
-      // Thumbnail: data-src="https://img3.javmost.ws/images/{CODE}.webp"
+      // Thumbnail: data-src/data-srcset="https://img2.javmost.ws/file_image/{CODE}.jpg"
       const thumbMatch = card.match(
-        /data-src="(https?:\/\/img\d*\.javmost\.ws\/images\/[^"]+)"/
+        /(?:data-src|data-srcset|src)="((?:https?:)?\/\/img\d*\.javmost\.ws\/(?:images|file_image)\/[^\"]+)"/i
       )
-      const thumb = thumbMatch ? thumbMatch[1] : ""
+      const thumb = thumbMatch ? proxyJavmostThumb(thumbMatch[1]) : ""
 
       // Title: from <h1 class="card-title">{CODE}</h1> or alt attribute
       const titleMatch =
@@ -88,10 +95,14 @@ export function parseVideoPage(
     const title = decodeHtml(titleMatch.trim())
 
     // Thumbnail
-    const thumbMatch = html.match(
-      /data-src="(https?:\/\/img\d*\.javmost\.ws\/images\/[^"]+)"/
-    )
-    const thumb = thumbMatch ? thumbMatch[1] : ""
+    const thumbMatch =
+      html.match(
+        /(?:data-src|data-srcset|content)="((?:https?:)?\/\/img\d*\.javmost\.ws\/(?:images|file_image)\/[^\"]+)"/i
+      ) ||
+      html.match(
+        /<meta[^>]+property="og:image"[^>]+content="((?:https?:)?\/\/img\d*\.javmost\.ws\/[^\"]+)"/i
+      )
+    const thumb = thumbMatch ? proxyJavmostThumb(thumbMatch[1]) : ""
 
     // Tags/categories from the page
     const tags: string[] = []
@@ -102,34 +113,41 @@ export function parseVideoPage(
     }
 
     // Actresses/stars
+    const performers: string[] = []
     for (const m of html.matchAll(
       /href="https?:\/\/(?:www\.)?javmost\.ws\/pornstar\/([^/"]+)\//g
     )) {
       const name = decodeURIComponent(m[1].replace(/-/g, " "))
-      if (name !== "all") tags.push(name)
+      if (name !== "all") performers.push(name)
     }
 
-    // Look for iframe embeds (video player)
-    let embedUrl = ""
+    // Look for direct media URLs. Playback itself always goes through our local
+    // player proxy so CSP-restricted third-party frames never reach the browser.
+    let directMediaUrl = ""
     const iframeMatch = html.match(/<iframe[^>]+src="(https?:\/\/[^"]+)"/i)
     if (iframeMatch) {
-      embedUrl = iframeMatch[1]
-    }
-
-    // If no iframe, look for player JavaScript with stream URLs
-    if (!embedUrl) {
-      // JavMost uses data-link or player setup
-      const dataLink = html.match(/data-link="([^"]+)"/)
-      if (dataLink) {
-        embedUrl = dataLink[1]
-        if (embedUrl.startsWith("//")) embedUrl = `https:${embedUrl}`
+      const candidate = iframeMatch[1]
+      if (/^https?:\/\/[^\s]+\.(?:mp4|m3u8)(?:\?|$)/i.test(candidate)) {
+        directMediaUrl = candidate
       }
     }
 
-    // Fallback to player proxy
-    if (!embedUrl) {
-      embedUrl = `/api/javmost/player/${encodeURIComponent(code)}`
+    // If no iframe, look for player JavaScript with stream URLs
+    if (!directMediaUrl) {
+      // JavMost uses data-link or player setup
+      const dataLink = html.match(/data-link="([^"]+)"/)
+      if (dataLink) {
+        const candidate = dataLink[1].startsWith("//")
+          ? `https:${dataLink[1]}`
+          : dataLink[1]
+        if (/^https?:\/\/[^\s]+\.(?:mp4|m3u8)(?:\?|$)/i.test(candidate)) {
+          directMediaUrl = candidate
+        }
+      }
     }
+
+    const embedUrl = `/api/javmost/player/${encodeURIComponent(code)}`
+    const downloadUrl = directMediaUrl || undefined
 
     return {
       id: code,
@@ -141,8 +159,10 @@ export function parseVideoPage(
       rating: "",
       quality: "",
       tags,
+      performers,
       url: `https://www.javmost.ws/${code}/`,
       embedUrl,
+      downloadUrl,
       added: "",
     }
   } catch {

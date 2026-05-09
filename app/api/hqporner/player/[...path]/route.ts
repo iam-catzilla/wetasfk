@@ -106,25 +106,18 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params
-  const id = path[0]
+  const rawId = path[0]
+  const [numericId, slug = ""] = (rawId || "").split("~")
 
-  if (!id || !/^\d+$/.test(id)) {
+  if (!numericId || !/^\d+$/.test(numericId)) {
     return new NextResponse("Invalid video ID", { status: 400 })
   }
 
   try {
-    // Step 1: Find the full video page URL via search
-    const searchHtml = await proxyFetch(`${HQ_BASE}/?q=${id}`)
-    const linkMatch = searchHtml.match(
-      new RegExp(`href="(/hdporn/${id}-[^"]+\\.html)"`)
-    )
-
-    let videoHtml: string
-    if (linkMatch) {
-      videoHtml = await proxyFetch(`${HQ_BASE}${linkMatch[1]}`)
-    } else {
-      videoHtml = await proxyFetch(`${HQ_BASE}/hdporn/${id}.html`)
-    }
+    const videoPath = slug
+      ? `/hdporn/${numericId}-${slug}.html`
+      : `/hdporn/${numericId}.html`
+    const videoHtml = await proxyFetch(`${HQ_BASE}${videoPath}`)
 
     // Step 2: Extract embed URL (mydaddy.cc or similar) from AJAX player blocks
     let embedUrl = ""
